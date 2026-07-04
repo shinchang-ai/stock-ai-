@@ -7,10 +7,10 @@ import datetime
 import requests
 import time
 import urllib.parse 
+import random # 랜덤 승인코드 생성을 위해 추가!
 
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
-# ⭐ 스트림릿 특유의 흐려짐(Ghosting) 현상을 강제로 막는 마법의 CSS 코드!
 st.markdown("""
     <style>
     div[data-testid="stStaleNode"] { opacity: 1 !important; filter: none !important; transition: none !important; }
@@ -36,7 +36,7 @@ def get_rank_info(score):
 
 @st.cache_data(ttl=600)
 def get_target_stocks():
-    krx = fdr.StockListing('KRX') # 코스피 + 코스닥 전 종목 출동!
+    krx = fdr.StockListing('KRX')
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
     krx = krx[(krx['Marcap'] >= 100000000000) & (krx['Marcap'] <= 5000000000000)]
     return krx.sort_values('Amount', ascending=False).head(50)
@@ -45,13 +45,11 @@ def run_stock_analysis(ui_box=None):
     results = []
     try:
         if ui_box: ui_box.info("📡 시총 1천억~5조 알짜 주도주 압축 스캔 중...")
-        
         target_stocks = get_target_stocks()
         total = len(target_stocks)
         
         for idx, (index, row) in enumerate(target_stocks.iterrows()):
             code, name = row['Code'], row['Name']
-            
             if ui_box: ui_box.warning(f"⏳ AI 정밀 분석 중 [{idx+1}/{total}] : 🔍 **{name}**")
             
             df = fdr.DataReader(code, today - datetime.timedelta(days=120))
@@ -59,7 +57,6 @@ def run_stock_analysis(ui_box=None):
             
             close, volume = df['Close'].iloc[-1], df['Volume'].iloc[-1]
             tr_val = close * volume 
-            
             if tr_val < 50000000000: continue 
             
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
@@ -67,11 +64,9 @@ def run_stock_analysis(ui_box=None):
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
             bb_upper = bb.bollinger_hband().iloc[-1]
             
-            if vol_ratio < 1.5 and close < bb_upper:
-                continue 
+            if vol_ratio < 1.5 and close < bb_upper: continue 
             
             score = 0; details = []
-            
             if tr_val >= 100000000000: score += 30; details.append("💰거래대금 1천억 돌파(+30)")
             elif tr_val >= 50000000000: score += 20; details.append("💰거래대금 5백억 돌파(+20)")
                 
@@ -92,12 +87,12 @@ def run_stock_analysis(ui_box=None):
         if ui_box: ui_box.success("✅ 스캔 완료!")
         time.sleep(0.5)
         if ui_box: ui_box.empty()
-        
         return sorted(results, key=lambda x: x['score'], reverse=True)
     except Exception as e:
         if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
+# 로봇 자동 발송 로직 (승인 패스)
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -109,7 +104,55 @@ if is_cron_job:
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
+# --- ⭐ 실시간 텔레그램 승인(OTP) 통제 구역 ---
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+    st.session_state.otp = None
+    st.session_state.req_name = ""
+
+if not st.session_state.auth:
+    st.title("🔒 신창 세력 포착 AI (VIP 전용)")
+    st.error("⚠️ 관리자(신창 대표님)의 다이렉트 승인이 있어야만 실행됩니다.")
+
+    if st.session_state.otp is None:
+        st.info("지인이시라면 본인의 이름을 적고 승인을 요청하세요.")
+        req_name = st.text_input("접속자 이름 (예: 김지인)")
+        
+        if st.button("대표님께 승인 요청 보내기"):
+            if req_name.strip() == "":
+                st.warning("이름을 꼭 입력해주세요!")
+            else:
+                st.session_state.req_name = req_name
+                st.session_state.otp = str(random.randint(1000, 9999)) # 매번 바뀌는 4자리 코드!
+                
+                # 대표님 텔레그램으로 알람 전송!
+                msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}\n(모르는 사람이면 이 메시지를 무시하세요!)"
+                requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
+                
+                st.success("✅ 대표님께 승인 요청이 전송되었습니다! 카톡이나 전화로 코드를 물어보세요.")
+                st.rerun()
+    else:
+        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 대표님께 연락하여 4자리 코드를 받아 입력하세요.")
+        entered_otp = st.text_input("승인 코드 4자리", type="password")
+        
+        if st.button("접속하기"):
+            if entered_otp == st.session_state.otp:
+                st.session_state.auth = True
+                st.rerun()
+            else:
+                st.error("❌ 코드가 틀렸습니다. 대표님을 거치지 않은 불법 접근입니다.")
+        
+        if st.button("처음부터 다시 요청하기"):
+            st.session_state.otp = None
+            st.rerun()
+            
+    st.stop() # 코드를 모르면 여기서 프로그램 강제 종료! 못 넘어갑니다.
+# ------------------------------------------------
+
+# 통과한 사람만 보는 메인 화면
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
+st.info(f"🎉 **{st.session_state.req_name}**님, 대표님의 승인을 받아 접속되었습니다.")
+
 if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
 else: st.success("🔥 현재 모드: 장중 500억 이상 찐 주도주 압축")
 
@@ -119,7 +162,6 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     status_box = st.empty() 
     stocks = run_stock_analysis(status_box)
     
-    # ⭐ 흐려짐(유령 현상)을 유발하던 특수 상자를 제거하고 직관적으로 렌더링!
     if stocks:
         st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
         
