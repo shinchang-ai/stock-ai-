@@ -14,6 +14,17 @@ st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", la
 st.markdown("""
     <style>
     div[data-testid="stStaleNode"] { opacity: 1 !important; filter: none !important; transition: none !important; }
+    /* 네이버 버튼 예쁘게 꾸미기 */
+    .naver-btn {
+        background-color: #03c75a;
+        color: white !important;
+        padding: 2px 8px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 0.5em;
+        vertical-align: middle;
+        margin-left: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,10 +72,10 @@ def run_stock_analysis(ui_box=None):
         for idx, (index, row) in enumerate(target_stocks.iterrows()):
             code, name, marcap = row['Code'], row['Name'], row['Marcap']
             
-            # ⭐ 한국거래소(KRX) 데이터에서 섹터(업종) 정보 빼오기!
+            # ⭐ 엉망인 Sector 대신 조금 더 상세한 Industry(업종) 데이터를 우선 가져오도록 수정!
+            industry = row.get('Industry', '')
             sector = row.get('Sector', '')
-            if pd.isna(sector) or str(sector).strip() == '':
-                sector = "기타업종" # 섹터가 비어있는 경우 방어
+            final_sector = industry if pd.notna(industry) and str(industry).strip() != '' else (sector if pd.notna(sector) and str(sector).strip() != '' else "분류없음")
                 
             if ui_box: ui_box.warning(f"⏳ AI 정밀 분석 중 [{idx+1}/{total}] : 🔍 **{name}**")
             
@@ -99,8 +110,7 @@ def run_stock_analysis(ui_box=None):
             if score >= 70:
                 rank_title, action = get_rank_info(score)
                 marcap_str = format_marcap(marcap)
-                # 결과에 섹터 정보 추가!
-                results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action, 'marcap_str': marcap_str, 'sector': sector})
+                results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action, 'marcap_str': marcap_str, 'sector': final_sector})
         
         if ui_box: ui_box.success("✅ 스캔 완료!")
         time.sleep(0.5)
@@ -110,7 +120,6 @@ def run_stock_analysis(ui_box=None):
         if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
-# --- 텔레그램 로봇 알람 (섹터 정보 추가!) ---
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -118,8 +127,7 @@ if is_cron_job:
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
-            # ⭐ 텔레그램 메시지 양식에 '섹터' 추가!
-            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n🏢 시총: {res['marcap_str']} | 🏷️ 업종: {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
+            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
@@ -199,8 +207,10 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            # ⭐ 화면에도 시총 바로 옆에 섹터 추가!
-            st.markdown(f"<h3 style='margin-bottom:0px;'>{res['rank']} {res['name']} ({res['code']}) <span style='font-size: 0.6em; color: #888888; font-weight: normal; white-space: nowrap;'>시총: {res['marcap_str']} | 🏷️ {res['sector']}</span></h3>", unsafe_allow_html=True)
+            # ⭐ 제목 옆에 '네이버 금융' 다이렉트 버튼 추가!
+            st.markdown(f"<h3 style='margin-bottom:0px;'>{res['rank']} {res['name']} ({res['code']}) "
+                        f"<a href='https://finance.naver.com/item/main.naver?code={res['code']}' target='_blank' class='naver-btn'>📈 N금융 차트보기</a></h3>"
+                        f"<span style='font-size: 0.8em; color: #888888;'>시총: {res['marcap_str']} | 🏷️ {res['sector']}</span>", unsafe_allow_html=True)
             
             st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
             st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
