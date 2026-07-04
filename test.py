@@ -44,7 +44,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
-CHAT_ID = "1076053813"
+CHAT_ID ="-1004426603017"
 EXPIRATION_DATE = datetime.date(2026, 7, 11)
 today = datetime.date.today()
 
