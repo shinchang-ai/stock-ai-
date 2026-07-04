@@ -6,23 +6,20 @@ from ta.volume import OnBalanceVolumeIndicator
 import datetime
 import requests
 import time
+import urllib.parse 
 
-# --- 텔레그램 봇 정보 셋팅 (대표님 정보로 완벽 세팅 완료!) ---
+# --- 텔레그램 봇 정보 셋팅 (완벽 세팅됨) ---
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
 CHAT_ID = "1076053813"
 
-# --- 1. 페이지 및 어플 설정 ---
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
-# --- 2. 유료화 (7일 무료 체험 락 기능) ---
 EXPIRATION_DATE = datetime.date(2026, 7, 11)
 today = datetime.date.today()
 
-# --- ⏱️ 한국 시간(KST) 자동 감지 시스템 ---
 now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 current_time = now_kst.time()
 
-# 오후 3시 15분 ~ 3시 35분 사이에는 무조건 종가베팅 모드 발동!
 if datetime.time(15, 15) <= current_time <= datetime.time(15, 35):
     is_jongbe = True
     mode_text = "🌙 [종가베팅]"
@@ -30,18 +27,15 @@ else:
     is_jongbe = False
     mode_text = "☀️ [장중수급]"
 
-# --- 🕵️‍♂️ 백그라운드 자동 로봇(Cron) 감지 장치 ---
 query_params = st.query_params
 is_cron_job = (query_params.get("job") == "cron")
 
-# 만료일 체크
 if today > EXPIRATION_DATE:
-    if is_cron_job:
-        st.stop()
+    if is_cron_job: st.stop()
     st.error("🔒 무료 체험 기간이 만료되었습니다. 계속 사용하시려면 VIP 인증이 필요합니다.")
     st.stop()
 
-# --- 3. 핵심 알고리즘 함수 ---
+# --- 3. 핵심 알고리즘 함수 (항목별 점수 상세 기록 추가!) ---
 def run_stock_analysis():
     results = []
     try:
@@ -59,62 +53,82 @@ def run_stock_analysis():
             close = df['Close'].iloc[-1]
             volume = df['Volume'].iloc[-1]
             
-            if (close * volume) < 50000000000: continue # 500억 컷
+            if (close * volume) < 50000000000: continue 
             if close < df['Close'].rolling(window=120).mean().iloc[-1]: continue
             
             score = 0
-            # 1. 거래량 폭발 (30점)
+            details = [] # ⭐ 점수 획득 이유를 담을 주머니 생성!
+            
+            # 1. 거래량 분석
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
-            if vol_ratio >= 5: score += 30
-            elif vol_ratio >= 3: score += 20
-            elif vol_ratio >= 2: score += 10
+            if vol_ratio >= 5: 
+                score += 30
+                details.append("🔥거래량 폭발(+30점)")
+            elif vol_ratio >= 3: 
+                score += 20
+                details.append("🔥거래량 급증(+20점)")
+            elif vol_ratio >= 2: 
+                score += 10
+                details.append("🔥거래량 증가(+10점)")
             
-            # 2. 볼밴 상단 돌파 (40점)
+            # 2. 볼린저밴드 분석
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
-            if close >= bb.bollinger_hband().iloc[-1]: score += 40
-            elif close >= bb.bollinger_mavg().iloc[-1]: score += 20
+            if close >= bb.bollinger_hband().iloc[-1]: 
+                score += 40
+                details.append("📈볼밴 상단 돌파(+40점)")
+            elif close >= bb.bollinger_mavg().iloc[-1]: 
+                score += 20
+                details.append("📈볼밴 중심선 안착(+20점)")
             
-            # 3. OBV 매집 (30점)
+            # 3. OBV 매집 분석
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
-            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30
+            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: 
+                score += 30
+                details.append("💰OBV 세력 매집(+30점)")
             
             if score >= 60:
-                results.append({'name': name, 'code': code, 'score': score, 'price': close})
+                results.append({
+                    'name': name, 
+                    'code': code, 
+                    'score': score, 
+                    'price': close,
+                    'details': details # ⭐ 이유를 결과에 저장!
+                })
                 
         return sorted(results, key=lambda x: x['score'], reverse=True)
-    except:
+    except Exception as e:
         return []
 
-# --- 4. 로봇(Cron) 전용 분기 처리 (텔레그램 자동 발송) ---
+# --- 4. 로봇(Cron) 전용 텔레그램 발송 ---
 if is_cron_job:
     detected_stocks = run_stock_analysis()
     
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage" # URL 안전하게 수정!
-    
     if detected_stocks:
-        # 조건에 맞는 종목이 있을 때 텔레그램 발송
         for res in detected_stocks:
             target_p = int(res['price'] * 1.05) if is_jongbe else int(res['price'] * 1.08)
             stop_p = int(res['price'] * 0.97) if is_jongbe else int(res['price'] * 0.95)
             
-            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n⭐ 세력점수: {res['score']}점\n📌 매수가: {res['price']:,}원\n🎯 목표가: {target_p:,}원\n🚨 손절가: {stop_p:,}원"
+            # ⭐ 텔레그램 메시지에도 점수 이유를 쏙!
+            detail_str = " / ".join(res['details'])
+            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n⭐ 세력점수: {res['score']}점 / 100점\n📝 포착이유: {detail_str}\n📌 매수가: {res['price']:,}원\n🎯 목표가: {target_p:,}원\n🚨 손절가: {stop_p:,}원"
             
-            # 에러 안 나게 안전한 데이터 포장 방식으로 전송!
-            requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+            safe_msg = urllib.parse.quote(msg) 
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={safe_msg}"
+            requests.get(url)
     else:
-        # [생존신고] 종목이 없을 때도 잘 연결되었는지 보고함!
-        msg = f"🔔 [신창 AI 생존신고] 보스! 현재 시장에 거래대금 500억 이상 터진 찐 주도주가 0개입니다. (텔레그램 연결 상태: 정상 작동 중 🟢)"
-        requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+        msg = f"🔔 [신창 AI 생존신고] 보스! 현재 시장에 거래대금 500억 이상 터진 찐 주도주가 0개입니다. (텔레그램 연결 상태: 정상 🟢)"
+        safe_msg = urllib.parse.quote(msg)
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={safe_msg}"
+        requests.get(url)
         
     st.write("Cron Job Executed.")
-    st.stop() # 로봇은 여기서 임무 끝내고 멈춤
+    st.stop() 
 
 # --- 5. 일반 사용자(지인용) 웹 화면 ---
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
 st.info(f"💡 무료 체험 기간: {EXPIRATION_DATE} 까지")
 
-# 💬 카톡 스타일 무음 토스트 팝업 알림
 if is_jongbe:
     st.toast("🚨 [종가베팅 모드 발동] 장 막판 찐 세력주 마감 타임입니다!", icon="🌙")
     st.error("🌙 현재 모드: 찐 종가베팅 발굴 (오후 3시 15분 타임)")
@@ -138,7 +152,14 @@ if start_btn or 'running' in st.session_state:
                 stop_p = int(res['price'] * 0.97) if is_jongbe else int(res['price'] * 0.95)
                 
                 with st.container():
-                    st.markdown(f"## {mode_text} {res['name']} ({res['code']}) - {res['score']}점")
+                    # ⭐ 제목 깔끔하게 유지하고, 100점 만점 표시 추가!
+                    st.markdown(f"## {mode_text} {res['name']} ({res['code']})")
+                    st.markdown(f"**🌟 세력 랭킹 점수:** `{res['score']}점 / 100점`")
+                    
+                    # ⭐ 캡션(작고 흐린 글씨)으로 지저분하지 않게 세부 이유 노출!
+                    detail_str = " | ".join(res['details'])
+                    st.caption(f"**[🔍 AI 포착 근거]** {detail_str}")
+                    
                     col1, col2, col3 = st.columns(3)
                     col1.metric("📌 권장 매수가", f"{res['price']:,}원")
                     col2.metric("🎯 목표가", f"{target_p:,}원")
@@ -148,7 +169,6 @@ if start_btn or 'running' in st.session_state:
         else:
             st.warning("😭 현재 조건에 맞는 세력 주도주가 없습니다. 잠시 후 재충전됩니다.")
             
-    # 🔄 10분(600초) 카운트다운 후 자동 새로고침
     countdown_placeholder = st.empty()
     for remaining in range(600, 0, -60):
         countdown_placeholder.write(f"🔄 {remaining // 60}분 뒤 자동으로 차트를 재분석하여 화면을 갱신합니다...")
