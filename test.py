@@ -30,14 +30,9 @@ def get_rank_info(score):
 @st.cache_data(ttl=600)
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
-    # 1. 우선순위 필터: 1천원 미만 동전주, 우선주, 스팩, 리츠 제외
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
-    
-    # ⭐ 2. 시가총액 황금 구간 필터 (1,000억 이상 ~ 5조 이하)
-    # Marcap = 시가총액 (단위: 원)
+    # 시가총액 1천억 ~ 5조 필터링
     krx = krx[(krx['Marcap'] >= 100000000000) & (krx['Marcap'] <= 5000000000000)]
-    
-    # 그 중에서 거래대금 상위 50개만 뽑아옴
     return krx.sort_values('Amount', ascending=False).head(50)
 
 def run_stock_analysis(ui_box=None):
@@ -59,10 +54,8 @@ def run_stock_analysis(ui_box=None):
             close, volume = df['Close'].iloc[-1], df['Volume'].iloc[-1]
             tr_val = close * volume 
             
-            # 최소 거래대금 500억 이상 조건
             if tr_val < 50000000000: continue 
             
-            # 필수 액션 필터 (거래량 1.5배 이상 or 볼린저 상단 돌파)
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
@@ -90,7 +83,7 @@ def run_stock_analysis(ui_box=None):
                 rank_title, action = get_rank_info(score)
                 results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action})
         
-        if ui_box: ui_box.success("✅ 시총 맞춤형 압축 스캔 완료!")
+        if ui_box: ui_box.success("✅ 스캔 완료!")
         time.sleep(0.5)
         if ui_box: ui_box.empty()
         
@@ -121,7 +114,9 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     stocks = run_stock_analysis(status_box)
     
     if stocks:
-        st.success(f"🔥 까다로운 조건 통과! 찐 주도주 총 {len(stocks)}개 포착!")
+        # ⭐ 여기에 눈에 확 띄는 빨간색 박스로 종목 수를 표시합니다!
+        st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
+        
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
