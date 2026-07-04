@@ -9,7 +9,15 @@ import time
 import urllib.parse 
 import random 
 
+# ⭐ 새로 추가된 자동로그인(쿠키) 부품!
+from streamlit_cookies_manager import EncryptedCookieManager
+
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
+
+# ⭐ 자동 로그인(쿠키) 매니저 셋팅! (비번은 해킹 방지용)
+cookies = EncryptedCookieManager(prefix="shin_ai", password="super_secret_password_777")
+if not cookies.ready():
+    st.stop() # 쿠키 준비될 때까지 0.1초 대기
 
 st.markdown("""
     <style>
@@ -24,7 +32,6 @@ st.markdown("""
         vertical-align: middle;
         margin-left: 10px;
     }
-    /* 면책조항 스타일 */
     .disclaimer {
         text-align: center;
         color: #999999;
@@ -138,18 +145,24 @@ if is_cron_job:
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
-# --- ⭐ 완벽 통제 로그인 구역 ---
+
+# --- ⭐ 완벽 통제 로그인 (자동 로그인 탑재!) ---
 if "auth" not in st.session_state:
-    st.session_state.auth = False
+    # 최초 접속 시, 내 폰(브라우저)에 VIP 입장권이 있는지 검사!
+    if cookies.get("is_logged_in") == "yes":
+        st.session_state.auth = True
+        st.session_state.req_name = cookies.get("vip_name")
+    else:
+        st.session_state.auth = False
+        st.session_state.req_name = ""
     st.session_state.otp = None
-    st.session_state.req_name = ""
 
 if not st.session_state.auth:
     st.title("🔒 세력 포착 AI (VIP 전용)")
     
     st.error("⚠️ 외부인 접속 통제 구역입니다. 관리자의 승인이 있어야만 접속 가능합니다.")
     if st.session_state.otp is None:
-        st.info("✋ [신규 접속] 본인의 이름을 적고 승인을 요청하세요.")
+        st.info("✋ [신규 접속] 본인의 이름을 적고 승인을 요청하세요. (최초 1회만 인증)")
         req_name = st.text_input("접속자 이름 (예: 김영해)")
         
         if st.button("승인 요청 보내기"):
@@ -168,8 +181,13 @@ if not st.session_state.auth:
         st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 관리자에게 전달받은 4자리 코드를 입력하세요.")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
-        if st.button("승인 확인 및 접속"):
+        if st.button("승인 확인 및 자동 로그인 등록"):
             if entered_otp == st.session_state.otp:
+                # ⭐ 정답을 맞추면 폰에 평생 입장권 발급 후 저장!
+                cookies["is_logged_in"] = "yes"
+                cookies["vip_name"] = st.session_state.req_name
+                cookies.save() # 저장 완료!
+                
                 st.session_state.auth = True
                 st.rerun()
             else:
@@ -181,10 +199,15 @@ if not st.session_state.auth:
 
     st.markdown("---")
     
-    st.warning("👑 [관리자 전용] 마스터 키를 입력하면 승인 없이 즉시 접속됩니다.")
+    st.warning("👑 [관리자 전용] 마스터 키를 입력하면 즉시 접속되며, 이후 자동 로그인됩니다.")
     master_pwd = st.text_input("마스터 비밀번호", type="password")
     if st.button("관리자 프리패스 접속"):
         if master_pwd == "7777": 
+            # ⭐ 대표님도 평생 입장권 발급!
+            cookies["is_logged_in"] = "yes"
+            cookies["vip_name"] = "👑 신창 대표"
+            cookies.save()
+            
             st.session_state.auth = True
             st.session_state.req_name = "👑 신창 대표"
             st.rerun()
@@ -196,7 +219,7 @@ if not st.session_state.auth:
 
 # 메인 화면
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
-st.info(f"🎉 **{st.session_state.req_name}**님, 환영합니다!")
+st.info(f"🎉 **{st.session_state.req_name}**님, 환영합니다! (자동 로그인 완료)")
 
 if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
 else: st.success("🔥 현재 모드: 장중 500억 이상 찐 주도주 압축")
