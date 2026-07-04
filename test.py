@@ -10,6 +10,13 @@ import urllib.parse
 
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
+# ⭐ 스트림릿 특유의 흐려짐(Ghosting) 현상을 강제로 막는 마법의 CSS 코드!
+st.markdown("""
+    <style>
+    div[data-testid="stStaleNode"] { opacity: 1 !important; filter: none !important; transition: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
 CHAT_ID = "1076053813"
 EXPIRATION_DATE = datetime.date(2026, 7, 11)
@@ -29,7 +36,7 @@ def get_rank_info(score):
 
 @st.cache_data(ttl=600)
 def get_target_stocks():
-    krx = fdr.StockListing('KRX')
+    krx = fdr.StockListing('KRX') # 코스피 + 코스닥 전 종목 출동!
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
     krx = krx[(krx['Marcap'] >= 100000000000) & (krx['Marcap'] <= 5000000000000)]
     return krx.sort_values('Amount', ascending=False).head(50)
@@ -112,30 +119,26 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     status_box = st.empty() 
     stocks = run_stock_analysis(status_box)
     
-    # ⭐ 화면 찌꺼기 방지용 '전용 컨테이너' 생성 (새로 돌 때마다 싹 비워짐)
-    result_container = st.empty()
-    
-    with result_container.container():
-        if stocks:
-            st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
+    # ⭐ 흐려짐(유령 현상)을 유발하던 특수 상자를 제거하고 직관적으로 렌더링!
+    if stocks:
+        st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
+        
+        for res in stocks:
+            target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
+            stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            for res in stocks:
-                target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
-                stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
-                
-                with st.container():
-                    st.markdown(f"## {res['rank']} {res['name']} ({res['code']})")
-                    st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
-                    st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("📌 매수가", f"{res['price']:,}원")
-                    col2.metric("🎯 목표가", f"{target_p:,}원")
-                    col3.metric("🚨 손절가", f"{stop_p:,}원")
-                    st.markdown("---")
-        else:
-            st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
+            st.markdown(f"## {res['rank']} {res['name']} ({res['code']})")
+            st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
+            st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
             
-    # 타이머는 깔끔하게 맨 밑에서 단독으로 돌아갑니다.
+            col1, col2, col3 = st.columns(3)
+            col1.metric("📌 매수가", f"{res['price']:,}원")
+            col2.metric("🎯 목표가", f"{target_p:,}원")
+            col3.metric("🚨 손절가", f"{stop_p:,}원")
+            st.markdown("---")
+    else:
+        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
+        
     countdown_box = st.empty()
     for i in range(600, 0, -1):
         mins, secs = divmod(i, 60)
