@@ -7,7 +7,7 @@ import datetime
 import requests
 import time
 import urllib.parse 
-import random # 랜덤 승인코드 생성을 위해 추가!
+import random 
 
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
@@ -92,7 +92,6 @@ def run_stock_analysis(ui_box=None):
         if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
-# 로봇 자동 발송 로직 (승인 패스)
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -104,7 +103,7 @@ if is_cron_job:
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
-# --- ⭐ 실시간 텔레그램 승인(OTP) 통제 구역 ---
+# --- ⭐ 완벽 통제 로그인 구역 ---
 if "auth" not in st.session_state:
     st.session_state.auth = False
     st.session_state.otp = None
@@ -112,46 +111,59 @@ if "auth" not in st.session_state:
 
 if not st.session_state.auth:
     st.title("🔒 신창 세력 포착 AI (VIP 전용)")
-    st.error("⚠️ 관리자(신창 대표님)의 다이렉트 승인이 있어야만 실행됩니다.")
-
+    
+    # [1구역] 외부인 / 지인용 승인 요청
+    st.error("⚠️ 외부인 접속 통제 구역입니다. 허가된 사용자만 접속 가능합니다.")
     if st.session_state.otp is None:
-        st.info("지인이시라면 본인의 이름을 적고 승인을 요청하세요.")
-        req_name = st.text_input("접속자 이름 (예: 김지인)")
+        st.info("✋ [신규 접속] 본인의 이름을 적고 대표님께 승인을 요청하세요.")
+        req_name = st.text_input("접속자 이름 (예: 김영해)")
         
         if st.button("대표님께 승인 요청 보내기"):
             if req_name.strip() == "":
                 st.warning("이름을 꼭 입력해주세요!")
             else:
                 st.session_state.req_name = req_name
-                st.session_state.otp = str(random.randint(1000, 9999)) # 매번 바뀌는 4자리 코드!
+                st.session_state.otp = str(random.randint(1000, 9999))
                 
-                # 대표님 텔레그램으로 알람 전송!
-                msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}\n(모르는 사람이면 이 메시지를 무시하세요!)"
+                msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}"
                 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
                 
-                st.success("✅ 대표님께 승인 요청이 전송되었습니다! 카톡이나 전화로 코드를 물어보세요.")
+                st.success("✅ 대표님께 승인 요청이 전송되었습니다! 코드를 받아 입력하세요.")
                 st.rerun()
     else:
-        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 대표님께 연락하여 4자리 코드를 받아 입력하세요.")
+        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 대표님께 받은 4자리 코드를 입력하세요.")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
-        if st.button("접속하기"):
+        if st.button("승인 확인 및 접속"):
             if entered_otp == st.session_state.otp:
                 st.session_state.auth = True
                 st.rerun()
             else:
-                st.error("❌ 코드가 틀렸습니다. 대표님을 거치지 않은 불법 접근입니다.")
+                st.error("❌ 코드가 틀렸습니다.")
         
         if st.button("처음부터 다시 요청하기"):
             st.session_state.otp = None
             st.rerun()
+
+    st.markdown("---")
+    
+    # [2구역] ⭐ 대표님 전용 다이렉트 프리패스 문!
+    st.warning("👑 [관리자 전용] 마스터 키를 입력하면 승인 없이 즉시 접속됩니다.")
+    master_pwd = st.text_input("마스터 비밀번호", type="password")
+    if st.button("관리자 프리패스 접속"):
+        if master_pwd == "7777": # 대표님만의 비밀번호!
+            st.session_state.auth = True
+            st.session_state.req_name = "👑 신창 대표"
+            st.rerun()
+        else:
+            st.error("❌ 마스터 코드가 일치하지 않습니다.")
             
-    st.stop() # 코드를 모르면 여기서 프로그램 강제 종료! 못 넘어갑니다.
+    st.stop()
 # ------------------------------------------------
 
 # 통과한 사람만 보는 메인 화면
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
-st.info(f"🎉 **{st.session_state.req_name}**님, 대표님의 승인을 받아 접속되었습니다.")
+st.info(f"🎉 **{st.session_state.req_name}**님, 환영합니다!")
 
 if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
 else: st.success("🔥 현재 모드: 장중 500억 이상 찐 주도주 압축")
