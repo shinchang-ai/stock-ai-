@@ -10,7 +10,6 @@ import time
 # --- 텔레그램 봇 정보 셋팅 (대표님 것만 여기에 적으세요!) ---
 BOT_TOKEN = "여기에_대표님_봇토큰_넣기"
 CHAT_ID = "여기에_대표님_챗아이디_넣기"
-
 # --- 1. 페이지 및 어플 설정 ---
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
@@ -86,10 +85,12 @@ def run_stock_analysis():
     except:
         return []
 
-# --- 4. 로봇(Cron) 분기 처리 ---
+# --- 4. 로봇(Cron) 전용 분기 처리 (텔레그램 자동 발송) ---
 if is_cron_job:
     detected_stocks = run_stock_analysis()
+    
     if detected_stocks:
+        # 조건에 맞는 종목이 있을 때 텔레그램 발송
         for res in detected_stocks:
             target_p = int(res['price'] * 1.05) if is_jongbe else int(res['price'] * 1.08)
             stop_p = int(res['price'] * 0.97) if is_jongbe else int(res['price'] * 0.95)
@@ -97,14 +98,20 @@ if is_cron_job:
             msg = f"🚨 {mode_text} {res['name']}({res['code']})\n⭐ 세력점수: {res['score']}점\n📌 매수가: {res['price']:,}원\n🎯 목표가: {target_p:,}원\n🚨 손절가: {stop_p:,}원"
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}"
             requests.get(url)
+    else:
+        # [테스트/생존신고] 조건에 맞는 종목이 없을 때도 텔레그램이 잘 연결되었는지 보고함!
+        msg = f"🔔 [신창 AI 생존신고] 보스! 현재 시장에 거래대금 500억 이상 터진 100점짜리 주도주가 0개입니다. (텔레그램 연결 상태: 정상 작동 중 🟢)"
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}"
+        requests.get(url)
+        
     st.write("Cron Job Executed.")
-    st.stop()
+    st.stop() # 로봇은 여기서 임무 끝내고 멈춤
 
 # --- 5. 일반 사용자(지인용) 웹 화면 ---
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
 st.info(f"💡 무료 체험 기간: {EXPIRATION_DATE} 까지")
 
-# 💬 [핵심 변경 사항] 카톡 스타일 무음 토스트 팝업 알림 적용!
+# 💬 카톡 스타일 무음 토스트 팝업 알림
 if is_jongbe:
     st.toast("🚨 [종가베팅 모드 발동] 장 막판 찐 세력주 마감 타임입니다!", icon="🌙")
     st.error("🌙 현재 모드: 찐 종가베팅 발굴 (오후 3시 15분 타임)")
@@ -141,7 +148,7 @@ if start_btn or 'running' in st.session_state:
     # 🔄 10분(600초) 카운트다운 후 자동 새로고침
     countdown_placeholder = st.empty()
     for remaining in range(600, 0, -60):
-        countdown_placeholder.write(f"🔄 {remaining // 60}분 뒤 자동으로 차트를 재분석하여 알람을 갱신합니다...")
+        countdown_placeholder.write(f"🔄 {remaining // 60}분 뒤 자동으로 차트를 재분석하여 화면을 갱신합니다...")
         time.sleep(60)
         
     st.rerun()
