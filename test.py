@@ -8,8 +8,8 @@ import requests
 import time
 
 # --- 텔레그램 봇 정보 셋팅 (대표님 것만 여기에 적으세요!) ---
-BOT_TOKEN = "여기에_대표님_봇토큰_넣기"
-CHAT_ID = "여기에_대표님_챗아이디_넣기"
+BOT_TOKEN ="8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
+CHAT_ID = "1076053813"
 # --- 1. 페이지 및 어플 설정 ---
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
