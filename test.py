@@ -8,7 +8,6 @@ import requests
 import time
 import urllib.parse 
 
-# --- 1. 기본 설정 ---
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
@@ -25,20 +24,26 @@ is_cron_job = (st.query_params.get("job") == "cron")
 
 def get_rank_info(score):
     if score >= 90: return "👑 [최상위 대장주]", "강력하게 풀매수!"
-    elif score >= 70: return "🔥 [강력 추천]", "공격적인 분할매수!"
+    elif score >= 80: return "🔥 [강력 추천]", "공격적인 분할매수!"
     else: return "🔔 [관심 추천]", "시세를 예의주시!"
 
-@st.cache_data(ttl=600) # ⭐ 종목 리스트도 10분(600초)마다 한 번씩만 갱신해서 렉 방지!
+@st.cache_data(ttl=600)
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
+    # 1. 우선순위 필터: 1천원 미만 동전주, 우선주, 스팩, 리츠 제외
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
+    
+    # ⭐ 2. 시가총액 황금 구간 필터 (1,000억 이상 ~ 5조 이하)
+    # Marcap = 시가총액 (단위: 원)
+    krx = krx[(krx['Marcap'] >= 100000000000) & (krx['Marcap'] <= 5000000000000)]
+    
+    # 그 중에서 거래대금 상위 50개만 뽑아옴
     return krx.sort_values('Amount', ascending=False).head(50)
 
-# --- 2. 핵심 분석 엔진 ---
 def run_stock_analysis(ui_box=None):
     results = []
     try:
-        if ui_box: ui_box.info("📡 500억 이상 주도주 수급 스캔 중...")
+        if ui_box: ui_box.info("📡 시총 1천억~5조 알짜 주도주 압축 스캔 중...")
         
         target_stocks = get_target_stocks()
         total = len(target_stocks)
@@ -54,34 +59,38 @@ def run_stock_analysis(ui_box=None):
             close, volume = df['Close'].iloc[-1], df['Volume'].iloc[-1]
             tr_val = close * volume 
             
+            # 최소 거래대금 500억 이상 조건
             if tr_val < 50000000000: continue 
+            
+            # 필수 액션 필터 (거래량 1.5배 이상 or 볼린저 상단 돌파)
+            ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
+            vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
+            bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
+            bb_upper = bb.bollinger_hband().iloc[-1]
+            
+            if vol_ratio < 1.5 and close < bb_upper:
+                continue 
             
             score = 0; details = []
             
-            if tr_val >= 100000000000: 
-                score += 30; details.append("💰거래대금 1천억 돌파(+30)")
-            elif tr_val >= 50000000000: 
-                score += 20; details.append("💰거래대금 5백억 돌파(+20)")
+            if tr_val >= 100000000000: score += 30; details.append("💰거래대금 1천억 돌파(+30)")
+            elif tr_val >= 50000000000: score += 20; details.append("💰거래대금 5백억 돌파(+20)")
                 
-            ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
-            vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
-            
             if vol_ratio >= 5: score += 30; details.append("🔥거래량 5배 폭발(+30)")
             elif vol_ratio >= 3: score += 20; details.append("🔥거래량 3배 급증(+20)")
             elif vol_ratio >= 2: score += 10; details.append("🔥거래량 2배 증가(+10)")
             
-            bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
-            if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈볼린저밴드 상단돌파(+40)")
+            if close >= bb_upper: score += 40; details.append("📈볼린저밴드 상단돌파(+40)")
             elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈볼린저밴드 중심선 안착(+20)")
             
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
             if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("👑OBV 세력매집 포착(+30)")
             
-            if score >= 60:
+            if score >= 70:
                 rank_title, action = get_rank_info(score)
                 results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action})
         
-        if ui_box: ui_box.success("✅ 500억 이상 주도주 스캔 완료!")
+        if ui_box: ui_box.success("✅ 시총 맞춤형 압축 스캔 완료!")
         time.sleep(0.5)
         if ui_box: ui_box.empty()
         
@@ -90,7 +99,6 @@ def run_stock_analysis(ui_box=None):
         if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
-# --- 3. 텔레그램 발송 ---
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -102,10 +110,9 @@ if is_cron_job:
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
-# --- 4. 사용자 웹 화면 ---
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
 if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
-else: st.success("🔥 현재 모드: 장중 500억 이상 수급 포착")
+else: st.success("🔥 현재 모드: 장중 500억 이상 찐 주도주 압축")
 
 if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' in st.session_state:
     st.session_state['running'] = True
@@ -114,7 +121,7 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     stocks = run_stock_analysis(status_box)
     
     if stocks:
-        st.success(f"🔥 조건 만족 주도주 총 {len(stocks)}개 포착!")
+        st.success(f"🔥 까다로운 조건 통과! 찐 주도주 총 {len(stocks)}개 포착!")
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
@@ -129,13 +136,12 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
                 col3.metric("🚨 손절가", f"{stop_p:,}원")
                 st.markdown("---")
     else:
-        st.warning("😭 현재 500억 이상 터진 주도주가 없습니다.")
+        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
         
-    # ⭐ 핵심: 10분(600초) 카운트다운 타이머!
     countdown_box = st.empty()
     for i in range(600, 0, -1):
         mins, secs = divmod(i, 60)
         countdown_box.info(f"⏰ 다음 AI 스캔까지 대기 중... ({mins}분 {secs:02d}초 남음)")
         time.sleep(1)
         
-    st.rerun() # 10분이 다 지나면 다시 처음부터 깔끔하게 재시작!
+    st.rerun()
