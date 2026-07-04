@@ -21,53 +21,52 @@ current_time = now_kst.time()
 is_jongbe = datetime.time(15, 15) <= current_time <= datetime.time(15, 35)
 mode_text = "🌙 [종가베팅]" if is_jongbe else "☀️ [장중수급]"
 
-query_params = st.query_params
-is_cron_job = (query_params.get("job") == "cron")
+is_cron_job = (st.query_params.get("job") == "cron")
 
 def get_rank_info(score):
-    # 총점이 올라갔으니 최상위 커트라인도 살짝 높여줍니다!
-    if score >= 100: return "👑 [최상위 대장주]", "강력하게 풀매수!"
+    if score >= 90: return "👑 [최상위 대장주]", "강력하게 풀매수!"
     elif score >= 70: return "🔥 [강력 추천]", "공격적인 분할매수!"
     else: return "🔔 [관심 추천]", "시세를 예의주시!"
 
-# --- 2. 핵심 분석 엔진 (⭐ 거래대금 점수 탑재!) ---
+# ⭐ 거래대금(Amount) 최상위 50개만 싹쓸이! (잡주 원천 차단)
+@st.cache_data(ttl=300)
+def get_target_stocks():
+    krx = fdr.StockListing('KRX')
+    krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
+    return krx.sort_values('Amount', ascending=False).head(50)
+
+# --- 2. 핵심 분석 엔진 ---
 def run_stock_analysis(ui_box=None):
     results = []
     try:
-        if ui_box: ui_box.info("📡 KRX 전 종목 데이터 불러오는 중... 잠시만 대기!")
-        krx = fdr.StockListing('KRX')
-        krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
+        if ui_box: ui_box.info("📡 500억 이상 주도주 수급 스캔 중...")
         
-        # 무한 로딩 방지 위해 상위 30개만 초고속 스캔
-        target_stocks = krx.sort_values('Volume', ascending=False).head(30) 
+        target_stocks = get_target_stocks()
         total = len(target_stocks)
         
         for idx, (index, row) in enumerate(target_stocks.iterrows()):
             code, name = row['Code'], row['Name']
             
-            # 실시간 스캔 애니메이션!
-            if ui_box: ui_box.warning(f"⏳ AI 실시간 분석 중 [{idx+1}/{total}] : **{name}** 세력 수급 스캔...")
+            if ui_box: ui_box.warning(f"⏳ AI 정밀 분석 중 [{idx+1}/{total}] : 🔍 **{name}**")
             
             df = fdr.DataReader(code, today - datetime.timedelta(days=120))
             if len(df) < 60: continue 
             
             close, volume = df['Close'].iloc[-1], df['Volume'].iloc[-1]
-            tr_val = close * volume # ⭐ 거래대금 계산 (종가 x 거래량)
+            tr_val = close * volume 
             
-            # 최소 거래대금 300억 미만은 잡주로 간주하고 버림!
-            if tr_val < 30000000000: continue 
+            # ⭐ 500억 미만은 여기서 가차 없이 목을 칩니다!
+            if tr_val < 50000000000: continue 
             
             score = 0; details = []
             
-            # 1. ⭐ 대표님의 아이디어! 거래대금 점수 매기기
-            if tr_val >= 100000000000:
+            # 1. 거래대금 점수 (500억 이상만 살아남음)
+            if tr_val >= 100000000000: 
                 score += 30; details.append("💰천억대금(+30)")
-            elif tr_val >= 50000000000:
+            elif tr_val >= 50000000000: 
                 score += 20; details.append("💰오백억대금(+20)")
-            elif tr_val >= 30000000000:
-                score += 10; details.append("💰삼백억대금(+10)")
                 
-            # 2. 거래량 급증 분석
+            # 2. 거래량 점수
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
             
@@ -75,29 +74,29 @@ def run_stock_analysis(ui_box=None):
             elif vol_ratio >= 3: score += 20; details.append("🔥급증(+20)")
             elif vol_ratio >= 2: score += 10; details.append("🔥증가(+10)")
             
-            # 3. 볼린저밴드 분석
+            # 3. 볼린저밴드 및 OBV 점수
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
             if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈상단돌파(+40)")
             elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈중심안착(+20)")
             
-            # 4. OBV 매집 분석
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
             if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("👑세력매집(+30)")
             
+            # 60점 이상만 합격!
             if score >= 60:
                 rank_title, action = get_rank_info(score)
                 results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action})
         
-        if ui_box: ui_box.success("✅ 스캔 완료! 결과 도출 중...")
-        time.sleep(1)
+        if ui_box: ui_box.success("✅ 500억 이상 주도주 스캔 완료!")
+        time.sleep(0.5)
         if ui_box: ui_box.empty()
         
         return sorted(results, key=lambda x: x['score'], reverse=True)
     except Exception as e:
-        if ui_box: ui_box.error("분석 중 통신 지연 발생! 다음 턴에 재시도합니다.")
+        if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
-# --- 3. 텔레그램 로봇 자동 발송 ---
+# --- 3. 텔레그램 발송 ---
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -112,7 +111,7 @@ if is_cron_job:
 # --- 4. 사용자 웹 화면 ---
 st.title("🚀 신창 세력 포착 AI 시스템 (Pro)")
 if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
-else: st.success("🔥 현재 모드: 장중 실시간 수급 포착")
+else: st.success("🔥 현재 모드: 장중 500억 이상 수급 포착")
 
 if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' in st.session_state:
     st.session_state['running'] = True
@@ -121,7 +120,7 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     stocks = run_stock_analysis(status_box)
     
     if stocks:
-        st.success(f"🔥 총 {len(stocks)}개의 주도주를 포착했습니다!")
+        st.success(f"🔥 조건 만족 주도주 총 {len(stocks)}개 포착!")
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
@@ -137,7 +136,7 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
                 st.markdown("---")
         time.sleep(10)
     else:
-        st.warning("😭 현재 조건에 맞는 주도주가 없습니다. 30초 뒤 재탐색합니다.")
+        st.warning("😭 현재 500억 이상 터진 주도주가 없습니다. 30초 뒤 재탐색합니다.")
         time.sleep(30)
         
     st.rerun()
