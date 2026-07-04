@@ -28,7 +28,7 @@ def get_rank_info(score):
     elif score >= 70: return "🔥 [강력 추천]", "공격적인 분할매수!"
     else: return "🔔 [관심 추천]", "시세를 예의주시!"
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600) # ⭐ 종목 리스트도 10분(600초)마다 한 번씩만 갱신해서 렉 방지!
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
@@ -58,13 +58,11 @@ def run_stock_analysis(ui_box=None):
             
             score = 0; details = []
             
-            # ⭐ 1. 거래대금 풀네임 변경
             if tr_val >= 100000000000: 
                 score += 30; details.append("💰거래대금 1천억 돌파(+30)")
             elif tr_val >= 50000000000: 
                 score += 20; details.append("💰거래대금 5백억 돌파(+20)")
                 
-            # ⭐ 2. 거래량 풀네임 변경
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
             
@@ -72,12 +70,10 @@ def run_stock_analysis(ui_box=None):
             elif vol_ratio >= 3: score += 20; details.append("🔥거래량 3배 급증(+20)")
             elif vol_ratio >= 2: score += 10; details.append("🔥거래량 2배 증가(+10)")
             
-            # ⭐ 3. 볼린저밴드 풀네임 변경
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
             if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈볼린저밴드 상단돌파(+40)")
             elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈볼린저밴드 중심선 안착(+20)")
             
-            # ⭐ 4. OBV 풀네임 변경
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
             if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("👑OBV 세력매집 포착(+30)")
             
@@ -132,9 +128,14 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
                 col2.metric("🎯 목표가", f"{target_p:,}원")
                 col3.metric("🚨 손절가", f"{stop_p:,}원")
                 st.markdown("---")
-        time.sleep(10)
     else:
-        st.warning("😭 현재 500억 이상 터진 주도주가 없습니다. 30초 뒤 재탐색합니다.")
-        time.sleep(30)
+        st.warning("😭 현재 500억 이상 터진 주도주가 없습니다.")
         
-    st.rerun()
+    # ⭐ 핵심: 10분(600초) 카운트다운 타이머!
+    countdown_box = st.empty()
+    for i in range(600, 0, -1):
+        mins, secs = divmod(i, 60)
+        countdown_box.info(f"⏰ 다음 AI 스캔까지 대기 중... ({mins}분 {secs:02d}초 남음)")
+        time.sleep(1)
+        
+    st.rerun() # 10분이 다 지나면 다시 처음부터 깔끔하게 재시작!
