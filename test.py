@@ -7,9 +7,10 @@ import datetime
 import requests
 import time
 
-# --- 텔레그램 봇 정보 셋팅 (대표님 것만 여기에 적으세요!) ---
-BOT_TOKEN ="8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
+# --- 텔레그램 봇 정보 셋팅 (대표님 정보로 완벽 세팅 완료!) ---
+BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
 CHAT_ID = "1076053813"
+
 # --- 1. 페이지 및 어플 설정 ---
 st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
 
@@ -89,6 +90,8 @@ def run_stock_analysis():
 if is_cron_job:
     detected_stocks = run_stock_analysis()
     
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage" # URL 안전하게 수정!
+    
     if detected_stocks:
         # 조건에 맞는 종목이 있을 때 텔레그램 발송
         for res in detected_stocks:
@@ -96,13 +99,13 @@ if is_cron_job:
             stop_p = int(res['price'] * 0.97) if is_jongbe else int(res['price'] * 0.95)
             
             msg = f"🚨 {mode_text} {res['name']}({res['code']})\n⭐ 세력점수: {res['score']}점\n📌 매수가: {res['price']:,}원\n🎯 목표가: {target_p:,}원\n🚨 손절가: {stop_p:,}원"
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}"
-            requests.get(url)
+            
+            # 에러 안 나게 안전한 데이터 포장 방식으로 전송!
+            requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
     else:
-        # [테스트/생존신고] 조건에 맞는 종목이 없을 때도 텔레그램이 잘 연결되었는지 보고함!
-        msg = f"🔔 [신창 AI 생존신고] 보스! 현재 시장에 거래대금 500억 이상 터진 100점짜리 주도주가 0개입니다. (텔레그램 연결 상태: 정상 작동 중 🟢)"
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={msg}"
-        requests.get(url)
+        # [생존신고] 종목이 없을 때도 잘 연결되었는지 보고함!
+        msg = f"🔔 [신창 AI 생존신고] 보스! 현재 시장에 거래대금 500억 이상 터진 찐 주도주가 0개입니다. (텔레그램 연결 상태: 정상 작동 중 🟢)"
+        requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
         
     st.write("Cron Job Executed.")
     st.stop() # 로봇은 여기서 임무 끝내고 멈춤
