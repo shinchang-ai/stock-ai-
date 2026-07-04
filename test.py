@@ -44,7 +44,10 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
-CHAT_ID ="-1004426603017"
+# ⭐ 번호 2개로 완벽 분리!
+ADMIN_ID = "1076053813"         # 👑 대표님 갠톡 (비번 받는 곳)
+CHANNEL_ID = "-1004426603017"   # 📢 단톡방 (주식 알람 쏘는 곳)
+
 EXPIRATION_DATE = datetime.date(2026, 7, 11)
 today = datetime.date.today()
 
@@ -142,13 +145,13 @@ if is_cron_job:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             msg = f"🚨 {mode_text} {res['name']}({res['code']})\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
-            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
+            # 알람은 CHANNEL_ID (단톡방) 으로 발송!
+            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHANNEL_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
 
 # --- ⭐ 완벽 통제 로그인 (자동 로그인 탑재!) ---
 if "auth" not in st.session_state:
-    # 최초 접속 시, 내 폰(브라우저)에 VIP 입장권이 있는지 검사!
     if cookies.get("is_logged_in") == "yes":
         st.session_state.auth = True
         st.session_state.req_name = cookies.get("vip_name")
@@ -173,7 +176,8 @@ if not st.session_state.auth:
                 st.session_state.otp = str(random.randint(1000, 9999))
                 
                 msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}"
-                requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
+                # 비번 요청은 ADMIN_ID (대표님 갠톡) 으로 발송!
+                requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={ADMIN_ID}&text={urllib.parse.quote(msg)}")
                 
                 st.success("✅ 승인 요청이 전송되었습니다! 전달받은 코드를 입력하세요.")
                 st.rerun()
@@ -183,10 +187,9 @@ if not st.session_state.auth:
         
         if st.button("승인 확인 및 자동 로그인 등록"):
             if entered_otp == st.session_state.otp:
-                # ⭐ 정답을 맞추면 폰에 평생 입장권 발급 후 저장!
                 cookies["is_logged_in"] = "yes"
                 cookies["vip_name"] = st.session_state.req_name
-                cookies.save() # 저장 완료!
+                cookies.save() 
                 
                 st.session_state.auth = True
                 st.rerun()
@@ -199,17 +202,16 @@ if not st.session_state.auth:
 
     st.markdown("---")
     
-    st.warning("👑 [관리자 전용] 마스터 키를 입력하면 즉시 접속되며, 이후 자동 로그인됩니다.")
+    st.warning("👑 [친한 지인/관리자 전용] 마스터 키를 입력하면 즉시 접속되며, 이후 자동 로그인됩니다.")
     master_pwd = st.text_input("마스터 비밀번호", type="password")
-    if st.button("관리자 프리패스 접속"):
+    if st.button("프리패스 접속"):
         if master_pwd == "7777": 
-            # ⭐ 대표님도 평생 입장권 발급!
             cookies["is_logged_in"] = "yes"
-            cookies["vip_name"] = "👑 신창 대표"
+            cookies["vip_name"] = "👑 VIP 멤버"
             cookies.save()
             
             st.session_state.auth = True
-            st.session_state.req_name = "👑 신창 대표"
+            st.session_state.req_name = "👑 VIP 멤버"
             st.rerun()
         else:
             st.error("❌ 마스터 코드가 일치하지 않습니다.")
