@@ -31,7 +31,6 @@ def get_rank_info(score):
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
     krx = krx[(krx['Close'] >= 1000) & (~krx['Name'].str.contains('우$|우B$|우C$|스팩|리츠'))]
-    # 시가총액 1천억 ~ 5조 필터링
     krx = krx[(krx['Marcap'] >= 100000000000) & (krx['Marcap'] <= 5000000000000)]
     return krx.sort_values('Amount', ascending=False).head(50)
 
@@ -113,26 +112,30 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
     status_box = st.empty() 
     stocks = run_stock_analysis(status_box)
     
-    if stocks:
-        # ⭐ 여기에 눈에 확 띄는 빨간색 박스로 종목 수를 표시합니다!
-        st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
-        
-        for res in stocks:
-            target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
-            stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
+    # ⭐ 화면 찌꺼기 방지용 '전용 컨테이너' 생성 (새로 돌 때마다 싹 비워짐)
+    result_container = st.empty()
+    
+    with result_container.container():
+        if stocks:
+            st.markdown(f"<div style='text-align: center; background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;'><h2>🔥 현재 포착된 찐 주도주 : 총 {len(stocks)}개</h2></div>", unsafe_allow_html=True)
             
-            with st.container():
-                st.markdown(f"## {res['rank']} {res['name']} ({res['code']})")
-                st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
-                st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
-                col1, col2, col3 = st.columns(3)
-                col1.metric("📌 매수가", f"{res['price']:,}원")
-                col2.metric("🎯 목표가", f"{target_p:,}원")
-                col3.metric("🚨 손절가", f"{stop_p:,}원")
-                st.markdown("---")
-    else:
-        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
-        
+            for res in stocks:
+                target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
+                stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
+                
+                with st.container():
+                    st.markdown(f"## {res['rank']} {res['name']} ({res['code']})")
+                    st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
+                    st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("📌 매수가", f"{res['price']:,}원")
+                    col2.metric("🎯 목표가", f"{target_p:,}원")
+                    col3.metric("🚨 손절가", f"{stop_p:,}원")
+                    st.markdown("---")
+        else:
+            st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
+            
+    # 타이머는 깔끔하게 맨 밑에서 단독으로 돌아갑니다.
     countdown_box = st.empty()
     for i in range(600, 0, -1):
         mins, secs = divmod(i, 60)
