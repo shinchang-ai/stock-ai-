@@ -28,7 +28,6 @@ def get_rank_info(score):
     elif score >= 70: return "🔥 [강력 추천]", "공격적인 분할매수!"
     else: return "🔔 [관심 추천]", "시세를 예의주시!"
 
-# ⭐ 거래대금(Amount) 최상위 50개만 싹쓸이! (잡주 원천 차단)
 @st.cache_data(ttl=300)
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
@@ -55,34 +54,33 @@ def run_stock_analysis(ui_box=None):
             close, volume = df['Close'].iloc[-1], df['Volume'].iloc[-1]
             tr_val = close * volume 
             
-            # ⭐ 500억 미만은 여기서 가차 없이 목을 칩니다!
             if tr_val < 50000000000: continue 
             
             score = 0; details = []
             
-            # 1. 거래대금 점수 (500억 이상만 살아남음)
+            # ⭐ 1. 거래대금 풀네임 변경
             if tr_val >= 100000000000: 
-                score += 30; details.append("💰천억대금(+30)")
+                score += 30; details.append("💰거래대금 1천억 돌파(+30)")
             elif tr_val >= 50000000000: 
-                score += 20; details.append("💰오백억대금(+20)")
+                score += 20; details.append("💰거래대금 5백억 돌파(+20)")
                 
-            # 2. 거래량 점수
+            # ⭐ 2. 거래량 풀네임 변경
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
             
-            if vol_ratio >= 5: score += 30; details.append("🔥폭발(+30)")
-            elif vol_ratio >= 3: score += 20; details.append("🔥급증(+20)")
-            elif vol_ratio >= 2: score += 10; details.append("🔥증가(+10)")
+            if vol_ratio >= 5: score += 30; details.append("🔥거래량 5배 폭발(+30)")
+            elif vol_ratio >= 3: score += 20; details.append("🔥거래량 3배 급증(+20)")
+            elif vol_ratio >= 2: score += 10; details.append("🔥거래량 2배 증가(+10)")
             
-            # 3. 볼린저밴드 및 OBV 점수
+            # ⭐ 3. 볼린저밴드 풀네임 변경
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
-            if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈상단돌파(+40)")
-            elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈중심안착(+20)")
+            if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈볼린저밴드 상단돌파(+40)")
+            elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈볼린저밴드 중심선 안착(+20)")
             
+            # ⭐ 4. OBV 풀네임 변경
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
-            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("👑세력매집(+30)")
+            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("👑OBV 세력매집 포착(+30)")
             
-            # 60점 이상만 합격!
             if score >= 60:
                 rank_title, action = get_rank_info(score)
                 results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action})
@@ -104,7 +102,7 @@ if is_cron_job:
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
-            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n{res['rank']} {res['action']}\n⭐ 점수: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
+            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
