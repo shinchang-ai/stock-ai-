@@ -14,7 +14,6 @@ st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", la
 st.markdown("""
     <style>
     div[data-testid="stStaleNode"] { opacity: 1 !important; filter: none !important; transition: none !important; }
-    /* 네이버 버튼 예쁘게 꾸미기 */
     .naver-btn {
         background-color: #03c75a;
         color: white !important;
@@ -24,6 +23,15 @@ st.markdown("""
         font-size: 0.5em;
         vertical-align: middle;
         margin-left: 10px;
+    }
+    /* 면책조항 스타일 */
+    .disclaimer {
+        text-align: center;
+        color: #999999;
+        font-size: 0.75em;
+        padding: 20px 0;
+        margin-top: 30px;
+        border-top: 1px solid #eeeeee;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -72,7 +80,6 @@ def run_stock_analysis(ui_box=None):
         for idx, (index, row) in enumerate(target_stocks.iterrows()):
             code, name, marcap = row['Code'], row['Name'], row['Marcap']
             
-            # ⭐ 엉망인 Sector 대신 조금 더 상세한 Industry(업종) 데이터를 우선 가져오도록 수정!
             industry = row.get('Industry', '')
             sector = row.get('Sector', '')
             final_sector = industry if pd.notna(industry) and str(industry).strip() != '' else (sector if pd.notna(sector) and str(sector).strip() != '' else "분류없음")
@@ -207,7 +214,6 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            # ⭐ 제목 옆에 '네이버 금융' 다이렉트 버튼 추가!
             st.markdown(f"<h3 style='margin-bottom:0px;'>{res['rank']} {res['name']} ({res['code']}) "
                         f"<a href='https://finance.naver.com/item/main.naver?code={res['code']}' target='_blank' class='naver-btn'>📈 N금융 차트보기</a></h3>"
                         f"<span style='font-size: 0.8em; color: #888888;'>시총: {res['marcap_str']} | 🏷️ {res['sector']}</span>", unsafe_allow_html=True)
@@ -215,18 +221,4 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
             st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
             
-            col1, col2, col3 = st.columns(3)
-            col1.metric("📌 매수가", f"{res['price']:,}원")
-            col2.metric("🎯 목표가", f"{target_p:,}원")
-            col3.metric("🚨 손절가", f"{stop_p:,}원")
-            st.markdown("---")
-    else:
-        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
-        
-    countdown_box = st.empty()
-    for i in range(600, 0, -1):
-        mins, secs = divmod(i, 60)
-        countdown_box.info(f"⏰ 다음 AI 스캔까지 대기 중... ({mins}분 {secs:02d}초 남음)")
-        time.sleep(1)
-        
-    st.rerun()
+            col1, col2, col3 = st.columns(3
