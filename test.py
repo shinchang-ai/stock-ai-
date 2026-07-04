@@ -9,7 +9,7 @@ import time
 import urllib.parse 
 import random 
 
-st.set_page_config(page_title="신창 세력 포착 AI", page_icon="🚀", layout="centered")
+st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
 st.markdown("""
     <style>
@@ -34,6 +34,17 @@ def get_rank_info(score):
     elif score >= 80: return "🔥 [강력 추천]", "공격적인 분할매수!"
     else: return "🔔 [관심 추천]", "시세를 예의주시!"
 
+# ⭐ 시총 예쁘게 포맷팅 하는 함수 (예: 1조 5000억)
+def format_marcap(marcap):
+    uk = int(marcap // 100000000)
+    if uk >= 10000:
+        jo = uk // 10000
+        remain_uk = uk % 10000
+        if remain_uk > 0: return f"{jo}조 {remain_uk:,}억"
+        else: return f"{jo}조"
+    else:
+        return f"{uk:,}억"
+
 @st.cache_data(ttl=600)
 def get_target_stocks():
     krx = fdr.StockListing('KRX')
@@ -49,7 +60,7 @@ def run_stock_analysis(ui_box=None):
         total = len(target_stocks)
         
         for idx, (index, row) in enumerate(target_stocks.iterrows()):
-            code, name = row['Code'], row['Name']
+            code, name, marcap = row['Code'], row['Name'], row['Marcap']
             if ui_box: ui_box.warning(f"⏳ AI 정밀 분석 중 [{idx+1}/{total}] : 🔍 **{name}**")
             
             df = fdr.DataReader(code, today - datetime.timedelta(days=120))
@@ -82,7 +93,8 @@ def run_stock_analysis(ui_box=None):
             
             if score >= 70:
                 rank_title, action = get_rank_info(score)
-                results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action})
+                marcap_str = format_marcap(marcap) # 시총 텍스트 생성!
+                results.append({'name': name, 'code': code, 'score': score, 'price': close, 'details': details, 'rank': rank_title, 'action': action, 'marcap_str': marcap_str})
         
         if ui_box: ui_box.success("✅ 스캔 완료!")
         time.sleep(0.5)
@@ -110,28 +122,29 @@ if "auth" not in st.session_state:
     st.session_state.req_name = ""
 
 if not st.session_state.auth:
-    st.title("🔒 신창 세력 포착 AI (VIP 전용)")
+    st.title("🔒 세력 포착 AI (VIP 전용)")
     
-    # [1구역] 외부인 / 지인용 승인 요청
-    st.error("⚠️ 외부인 접속 통제 구역입니다. 허가된 사용자만 접속 가능합니다.")
+    # 지인용 화면 (철저히 익명 '관리자'로 표기)
+    st.error("⚠️ 외부인 접속 통제 구역입니다. 관리자의 승인이 있어야만 접속 가능합니다.")
     if st.session_state.otp is None:
-        st.info("✋ [신규 접속] 본인의 이름을 적고 대표님께 승인을 요청하세요.")
+        st.info("✋ [신규 접속] 본인의 이름을 적고 승인을 요청하세요.")
         req_name = st.text_input("접속자 이름 (예: 김영해)")
         
-        if st.button("대표님께 승인 요청 보내기"):
+        if st.button("승인 요청 보내기"):
             if req_name.strip() == "":
                 st.warning("이름을 꼭 입력해주세요!")
             else:
                 st.session_state.req_name = req_name
                 st.session_state.otp = str(random.randint(1000, 9999))
                 
+                # 텔레그램 알림 (이건 대표님만 보는 거니까 내용 유지!)
                 msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}"
                 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
                 
-                st.success("✅ 대표님께 승인 요청이 전송되었습니다! 코드를 받아 입력하세요.")
+                st.success("✅ 승인 요청이 전송되었습니다! 전달받은 코드를 입력하세요.")
                 st.rerun()
     else:
-        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 대표님께 받은 4자리 코드를 입력하세요.")
+        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 관리자에게 전달받은 4자리 코드를 입력하세요.")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
         if st.button("승인 확인 및 접속"):
@@ -147,11 +160,11 @@ if not st.session_state.auth:
 
     st.markdown("---")
     
-    # [2구역] ⭐ 대표님 전용 다이렉트 프리패스 문!
+    # ⭐ 대표님 전용 다이렉트 프리패스 문!
     st.warning("👑 [관리자 전용] 마스터 키를 입력하면 승인 없이 즉시 접속됩니다.")
     master_pwd = st.text_input("마스터 비밀번호", type="password")
     if st.button("관리자 프리패스 접속"):
-        if master_pwd == "7777": # 대표님만의 비밀번호!
+        if master_pwd == "7777": 
             st.session_state.auth = True
             st.session_state.req_name = "👑 신창 대표"
             st.rerun()
@@ -181,7 +194,9 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            st.markdown(f"## {res['rank']} {res['name']} ({res['code']})")
+            # ⭐ 종목명 옆에 작고 회색 글씨로 시총 추가!
+            st.markdown(f"## {res['rank']} {res['name']} ({res['code']}) <span style='font-size: 0.5em; color: #888888;'>시총: {res['marcap_str']}</span>", unsafe_allow_html=True)
+            
             st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
             st.caption(f"🔍 포착 근거: {' | '.join(res['details'])}")
             
