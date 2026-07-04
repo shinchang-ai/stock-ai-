@@ -22,7 +22,7 @@ current_time = now_kst.time()
 is_jongbe = datetime.time(15, 15) <= current_time <= datetime.time(15, 35)
 mode_text = "🌙 [종가베팅]" if is_jongbe else "☀️ [장중수급]"
 
-# 🕵️‍♂️ 로봇 감지 (이게 위에 있어야 에러가 안 납니다!)
+# 🕵️‍♂️ 로봇 감지
 query_params = st.query_params
 is_cron_job = (query_params.get("job") == "cron")
 
@@ -49,14 +49,14 @@ def run_stock_analysis():
             score = 0; details = []
             ma20_vol = df['Volume'].rolling(window=20).mean().iloc[-2]
             vol_ratio = volume / ma20_vol if ma20_vol > 0 else 0
-            if vol_ratio >= 5: score += 30; details.append("🔥폭발(+30)")
-            elif vol_ratio >= 3: score += 20; details.append("🔥급증(+20)")
-            elif vol_ratio >= 2: score += 10; details.append("🔥증가(+10)")
+            if vol_ratio >= 5: score += 30; details.append("거래량 폭발(+30)")
+            elif vol_ratio >= 3: score += 20; details.append("거래량 급증(+20)")
+            elif vol_ratio >= 2: score += 10; details.append("거래량 증가(+10)")
             bb = BollingerBands(close=df['Close'], window=20, window_dev=2)
-            if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("📈상단돌파(+40)")
-            elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("📈중심안착(+20)")
+            if close >= bb.bollinger_hband().iloc[-1]: score += 40; details.append("볼린저밴드 돌파(+40)")
+            elif close >= bb.bollinger_mavg().iloc[-1]: score += 20; details.append("볼린저밴드 안착(+20)")
             obv = OnBalanceVolumeIndicator(close=df['Close'], volume=df['Volume']).on_balance_volume()
-            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("💰세력매집(+30)")
+            if obv.iloc[-1] > obv.rolling(window=20).mean().iloc[-1]: score += 30; details.append("세력 매집(+30)")
             
             if score >= 60:
                 rank_title, action = get_rank_info(score)
