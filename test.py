@@ -103,6 +103,7 @@ def run_stock_analysis(ui_box=None):
         if ui_box: ui_box.error("네트워크 지연! 잠시 후 재시도합니다.")
         return []
 
+# --- 텔레그램 로봇 알람 (시가총액 추가!) ---
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     stocks = run_stock_analysis()
@@ -110,7 +111,8 @@ if is_cron_job:
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
-            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
+            # ⭐ 텔레그램 메시지 양식에 '시총' 추가 완료!
+            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n🏢 시총: {res['marcap_str']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={urllib.parse.quote(msg)}")
     st.stop()
 
@@ -190,7 +192,6 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            # ⭐ 억 글자 밀림 현상 방지를 위해 HTML 디자인 개선!
             st.markdown(f"<h3 style='margin-bottom:0px;'>{res['rank']} {res['name']} ({res['code']}) <span style='font-size: 0.6em; color: #888888; font-weight: normal; white-space: nowrap;'>시총: {res['marcap_str']}</span></h3>", unsafe_allow_html=True)
             
             st.markdown(f"**🌟 AI 액션:** `{res['action']}` (세력점수: {res['score']}점)")
