@@ -53,7 +53,9 @@ today = datetime.date.today()
 
 now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 current_time = now_kst.time()
-is_jongbe = datetime.time(15, 15) <= current_time <= datetime.time(15, 35)
+
+# ⭐ 대표님 요청 반영: 종가베팅 시간을 15:15 ~ 15:20으로 칼같이 정밀 조정!
+is_jongbe = datetime.time(15, 15) <= current_time <= datetime.time(15, 20)
 mode_text = "🌙 [종가베팅]" if is_jongbe else "☀️ [장중수급]"
 
 is_cron_job = (st.query_params.get("job") == "cron")
@@ -139,16 +141,21 @@ def run_stock_analysis(ui_box=None):
 
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
+    
+    # ⭐ 대표님 핵심 요구사항: 아침 9시 00분 ~ 오후 3시 20분 사이가 아니면 강제 작동 정지!
+    if not (datetime.time(9, 0) <= current_time <= datetime.time(15, 20)):
+        st.stop()
+        
     stocks = run_stock_analysis()
     if stocks:
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            # ⭐ 1. 텔레그램 알람에 네이버 증권 링크 추가 완료!
+            # 텔레그램 알람에 네이버 증권 링크 추가 완료!
             msg = f"🚨 {mode_text} <a href='https://finance.naver.com/item/main.naver?code={res['code']}'>{res['name']}({res['code']})</a>\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
             
-            # ⭐ 2. HTML 적용시켜서 파란색 글씨로 예쁘게 송출!
+            # HTML 적용시켜서 파란색 글씨로 예쁘게 송출!
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHANNEL_ID}&text={urllib.parse.quote(msg)}&parse_mode=HTML")
     st.stop()
 
