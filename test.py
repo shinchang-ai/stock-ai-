@@ -17,6 +17,12 @@ st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", la
 # 쿠키 스캐너에 고정 이름표를 달아서 절대 안 떨어지게 묶음!
 cookie_manager = stx.CookieManager(key="shin_cookie")
 
+# 앱 켜질 때 0.5초 대기 후 새로고침해서 폰 주머니에 있는 쿠키를 100% 꺼내오게 만듦
+if "first_boot" not in st.session_state:
+    st.session_state["first_boot"] = True
+    time.sleep(0.5)
+    st.rerun()
+
 # 프론트엔드 쿠키 로딩 대기
 if cookie_manager.get_all() is None:
     st.stop() 
@@ -56,6 +62,17 @@ st.markdown("""
         text-align: center;
         margin-bottom: 20px;
         border: 2px solid #ff4b4b;
+    }
+    /* ⭐ 새로 추가된 꿀팁 배너 디자인 (눈에 띄는 파란색) */
+    .tip-banner {
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        border: 2px solid #1976d2;
     }
     @media (max-width: 640px) {
         h1 { font-size: 1.5rem !important; }
@@ -195,6 +212,16 @@ else:
 if not st.session_state.auth:
     st.title("🔒 세력 포착 AI (VIP 전용)")
     
+    # ⭐ 바탕화면 아이콘 추가를 유도하는 꿀팁 배너!
+    st.markdown("""
+    <div class="tip-banner">
+        💡 <b>스마트폰 바탕화면에 '아이콘'을 만들어두세요!</b><br><br>
+        매번 카톡 링크 찾지 마시고, 지금 화면 우측 하단(≡) 또는 상단(⋮) 메뉴를 눌러<br>
+        👉 <b>[홈 화면에 추가]</b> 👈 를 해두시면<br>
+        다음부터는 아이콘만 누르면 비번 없이 1초 만에 자동 접속됩니다! 🚀
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("""
     <div class="kakao-warning">
         🚨 잠깐! 현재 <b>카카오톡 내부 창</b>으로 열고 계신가요?<br><br>
@@ -239,7 +266,6 @@ if not st.session_state.auth:
         st.success(f"📌 [{req_name}]님에 대한 승인 요청이 활성화되어 있습니다. (1시간 동안 유효)")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
-        # ⭐ 해결책 1: 버튼을 분리해서 폰에 완벽하게 저장할 시간을 줍니다!
         if st.button("1️⃣ 승인 확인 및 영구 출입증 발급"):
             if entered_otp == active_otp:
                 expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
@@ -248,7 +274,6 @@ if not st.session_state.auth:
             else:
                 st.error("❌ 코드가 틀렸습니다.")
                 
-        # ⭐ 쿠키가 안전하게 폰에 심어지면 그제야 입장 버튼이 뜹니다.
         if st.session_state.get('login_ready') == req_name:
             st.success("✅ 폰에 영구 출입증이 완벽하게 저장되었습니다!")
             st.info("👇 아래 버튼을 누르면 시스템에 입장합니다. (이후 강제종료해도 비번 안 묻습니다!)")
@@ -272,7 +297,6 @@ if not st.session_state.auth:
     st.warning("👑 [친한 지인/관리자 전용] 마스터 키를 입력하면 즉시 접속되며, 이후 자동 로그인됩니다.")
     master_pwd = st.text_input("마스터 비밀번호", type="password")
     
-    # ⭐ 마스터 비번도 똑같이 2단계로 분리해서 폰에 쿠키 쾅쾅! 박아줍니다.
     if st.button("1️⃣ 프리패스 출입증 발급"):
         if master_pwd == "7777": 
             expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
@@ -321,24 +345,3 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             
             col1, col2, col3 = st.columns(3)
             col1.metric("📌 매수가", f"{res['price']:,}원")
-            col2.metric("🎯 목표가", f"{target_p:,}원")
-            col3.metric("🚨 손절가", f"{stop_p:,}원")
-            st.markdown("---")
-    else:
-        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
-        
-    st.markdown("""
-        <div class="disclaimer">
-            ⚠️ <b>투자 유의사항 (면책 조항)</b><br>
-            본 시스템이 제공하는 모든 정보는 AI 알고리즘에 기반한 단순 참고용 데이터이며, 절대적인 수익을 보장하지 않습니다.<br>
-            종목 매수/매도에 대한 최종 판단과 모든 법적/재무적 책임은 전적으로 투자자 본인에게 귀속됩니다.
-        </div>
-    """, unsafe_allow_html=True)
-        
-    countdown_box = st.empty()
-    for i in range(600, 0, -1):
-        mins, secs = divmod(i, 60)
-        countdown_box.info(f"⏰ 다음 AI 스캔까지 대기 중... ({mins}분 {secs:02d}초 남음)")
-        time.sleep(1)
-        
-    st.rerun()
