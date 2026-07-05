@@ -14,16 +14,16 @@ import extra_streamlit_components as stx
 
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
-# 창고에서 빼서 바로 실행하도록 수정!
-cookie_manager = stx.CookieManager()
+# ⭐ 핵심 해결책: 쿠키 스캐너에 고정 이름표(key="shin_cookie")를 달아서 강제 종료 후에도 안 떨어지게 꽉 묶음!
+cookie_manager = stx.CookieManager(key="shin_cookie")
 
-# ⭐ 핵심 해결책: 폰이 쿠키를 꺼낼 수 있도록 앱 켜질 때 딱 한 번 0.5초 대기 후 새로고침!
+# 앱 켜질 때 0.5초 대기 후 새로고침해서 폰 주머니에 있는 쿠키를 100% 꺼내오게 만듦
 if "first_boot" not in st.session_state:
     st.session_state["first_boot"] = True
     time.sleep(0.5)
     st.rerun()
 
-# 프론트엔드 쿠키 로딩 대기 딜레이 제거
+# 프론트엔드 쿠키 로딩 대기
 if cookie_manager.get_all() is None:
     st.stop() 
 
