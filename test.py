@@ -9,21 +9,26 @@ import time
 import urllib.parse
 import random
 
-# ⭐ 10년 영구 쿠키 매니저 (새로 장착된 부품!)
+# 영구 쿠키 매니저 부품
 import extra_streamlit_components as stx
 
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
-# ⭐ 영구 쿠키 매니저 실행
+# 영구 쿠키 매니저 실행
 @st.cache_resource
 def get_cookie_manager():
     return stx.CookieManager()
 
 cookie_manager = get_cookie_manager()
 
-# 💡 프론트엔드에서 쿠키 정보를 가져올 때까지 0.1초 딜레이 방지
+# 프론트엔드 쿠키 로딩 대기 딜레이 제거
 if cookie_manager.get_all() is None:
     st.stop() 
+
+# ⭐ 대표님 요청 반영: 대표님이 바쁘셔도 승인번호가 1시간 동안 지워지지 않는 서버 공유 보관소!
+@st.cache_resource
+def get_approval_db():
+    return {}
 
 st.markdown("""
     <style>
@@ -46,7 +51,6 @@ st.markdown("""
         margin-top: 30px;
         border-top: 1px solid #eeeeee;
     }
-    /* ⭐ 카카오톡 접속 경고 배너 디자인 */
     .kakao-warning {
         background-color: #ffe0e0;
         color: #d32f2f;
@@ -56,6 +60,16 @@ st.markdown("""
         text-align: center;
         margin-bottom: 20px;
         border: 2px solid #ff4b4b;
+    }
+    /* ⭐ 대표님 요청 반영: 모바일 폰 화면 크기에 맞춰 글자 및 픽셀 자동 축소 디자인 */
+    @media (max-width: 640px) {
+        h1 { font-size: 1.5rem !important; }
+        h2 { font-size: 1.25rem !important; }
+        h3 { font-size: 1.05rem !important; display: inline-block !important; }
+        div[data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+        div[data-testid="stMetricLabel"] { font-size: 0.75rem !important; }
+        .stButton>button { width: 100% !important; font-size: 0.9rem !important; padding: 8px !important; }
+        .naver-btn { display: inline-block !important; margin-top: 5px !important; margin-left: 0px !important; padding: 4px 8px !important; font-size: 0.65em !important; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -172,7 +186,7 @@ if is_cron_job:
     st.stop()
 
 
-# --- ⭐ 완벽 통제 로그인 (10년 영구 자동 로그인!) ---
+# --- ⭐ 완벽 통제 로그인 (10년 영구 자동 로그인 및 타임아웃 1시간 연장!) ---
 saved_vip_name = cookie_manager.get(cookie="vip_name")
 
 if saved_vip_name:
@@ -182,16 +196,14 @@ else:
     if "auth" not in st.session_state:
         st.session_state.auth = False
         st.session_state.req_name = ""
-    st.session_state.otp = None
 
 if not st.session_state.auth:
     st.title("🔒 세력 포착 AI (VIP 전용)")
     
-    # ⭐ 지인분들 튕김 방지용 강력 경고 배너!
     st.markdown("""
     <div class="kakao-warning">
         🚨 잠깐! 현재 <b>카카오톡 내부 창</b>으로 열고 계신가요?<br><br>
-        카톡 내부 창은 닫는 순간 자동로그인 기록이 <b>모두 삭제</b>됩니다!<br>
+        카톡 내부 창은 닫는 순간 자동로그인 기록이 <b>모든 삭제</b>됩니다!<br>
         화면 우측 하단의 점 3개(…)를 누르고 반드시<br>
         <b>👉 [다른 브라우저로 열기] (크롬, 사파리, 삼성인터넷) 👈</b><br>
         로 접속하셔야 평생 자동 로그인이 유지됩니다!
@@ -199,39 +211,59 @@ if not st.session_state.auth:
     """, unsafe_allow_html=True)
     
     st.error("⚠️ 외부인 접속 통제 구역입니다. 관리자의 승인이 있어야만 접속 가능합니다.")
-    if st.session_state.otp is None:
+    
+    approval_db = get_approval_db()
+    default_name = st.session_state.get("input_name", "")
+    req_name = st.text_input("접속자 이름 (예: 김영해)", value=default_name).strip()
+    
+    active_otp = None
+    if req_name:
+        if req_name in approval_db:
+            otp_info = approval_db[req_name]
+            # ⭐ 1시간(3600초) 이내면 대표님이 다른 일 하셔도 번호가 살아있음!
+            if (datetime.datetime.now() - otp_info["time"]).total_seconds() < 3600:
+                active_otp = otp_info["otp"]
+            else:
+                del approval_db[req_name]
+                
+    if active_otp is None:
         st.info("✋ [신규 접속] 본인의 이름을 적고 승인을 요청하세요. (최초 1회만 인증)")
-        req_name = st.text_input("접속자 이름 (예: 김영해)")
-        
         if st.button("승인 요청 보내기"):
-            if req_name.strip() == "":
+            if req_name == "":
                 st.warning("이름을 꼭 입력해주세요!")
             else:
-                st.session_state.req_name = req_name
-                st.session_state.otp = str(random.randint(1000, 9999))
+                otp_code = str(random.randint(1000, 9999))
+                approval_db[req_name] = {"otp": otp_code, "time": datetime.datetime.now()}
+                st.session_state["input_name"] = req_name
                 
-                msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}"
+                msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {otp_code}\n⏰ (코드는 1시간 동안 무조건 안전하게 유지됩니다.)"
                 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={ADMIN_ID}&text={urllib.parse.quote(msg)}")
                 
-                st.success("✅ 승인 요청이 전송되었습니다! 전달받은 코드를 입력하세요.")
+                st.success("✅ 승인 요청이 전송되었습니다! 아래에 전달받은 코드를 입력하세요.")
                 st.rerun()
     else:
-        st.success(f"[{st.session_state.req_name}]님, 대기 중입니다. 관리자에게 전달받은 4자리 코드를 입력하세요.")
+        # ⭐ 대표님이 늦게 봐도 지인이 다시 들어와서 이름만 치면 이 화면으로 바로 복구됨!
+        st.success(f"📌 [{req_name}]님에 대한 승인 요청이 활성화되어 있습니다. (1시간 동안 유효)")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
         if st.button("승인 확인 및 자동 로그인 등록"):
-            if entered_otp == st.session_state.otp:
-                # ⭐ 지금부터 10년 뒤(3650일) 만료되는 영구 쿠키 굽기!
+            if entered_otp == active_otp:
                 expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
-                cookie_manager.set("vip_name", st.session_state.req_name, expires_at=expire_date)
+                cookie_manager.set("vip_name", req_name, expires_at=expire_date)
                 
+                if req_name in approval_db:
+                    del approval_db[req_name]
+                    
                 st.session_state.auth = True
+                st.session_state.req_name = req_name
                 st.rerun()
             else:
                 st.error("❌ 코드가 틀렸습니다.")
-        
-        if st.button("처음부터 다시 요청하기"):
-            st.session_state.otp = None
+                
+        if st.button("이름 바꾸거나 다시 요청하기"):
+            if req_name in approval_db:
+                del approval_db[req_name]
+            st.session_state["input_name"] = ""
             st.rerun()
 
     st.markdown("---")
