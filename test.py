@@ -6,8 +6,8 @@ from ta.volume import OnBalanceVolumeIndicator
 import datetime
 import requests
 import time
-import urllib.parse 
-import random 
+import urllib.parse
+import random
 
 # ⭐ 새로 추가된 자동로그인(쿠키) 부품!
 from streamlit_cookies_manager import EncryptedCookieManager
@@ -144,9 +144,12 @@ if is_cron_job:
         for res in stocks:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
-            msg = f"🚨 {mode_text} {res['name']}({res['code']})\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
-            # 알람은 CHANNEL_ID (단톡방) 으로 발송!
-            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHANNEL_ID}&text={urllib.parse.quote(msg)}")
+            
+            # ⭐ 1. 텔레그램 알람에 네이버 증권 링크 추가 완료!
+            msg = f"🚨 {mode_text} <a href='https://finance.naver.com/item/main.naver?code={res['code']}'>{res['name']}({res['code']})</a>\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
+            
+            # ⭐ 2. HTML 적용시켜서 파란색 글씨로 예쁘게 송출!
+            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHANNEL_ID}&text={urllib.parse.quote(msg)}&parse_mode=HTML")
     st.stop()
 
 
