@@ -9,15 +9,21 @@ import time
 import urllib.parse
 import random
 
-# ⭐ 새로 추가된 자동로그인(쿠키) 부품!
-from streamlit_cookies_manager import EncryptedCookieManager
+# ⭐ 10년 영구 쿠키 매니저 (새로 장착된 부품!)
+import extra_streamlit_components as stx
 
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
-# ⭐ 자동 로그인(쿠키) 매니저 셋팅! (비번은 해킹 방지용)
-cookies = EncryptedCookieManager(prefix="shin_ai", password="super_secret_password_777")
-if not cookies.ready():
-    st.stop() # 쿠키 준비될 때까지 0.1초 대기
+# ⭐ 영구 쿠키 매니저 실행
+@st.cache_resource
+def get_cookie_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_cookie_manager()
+
+# 💡 프론트엔드에서 쿠키 정보를 가져올 때까지 0.1초 딜레이 방지
+if cookie_manager.get_all() is None:
+    st.stop() 
 
 st.markdown("""
     <style>
@@ -40,13 +46,23 @@ st.markdown("""
         margin-top: 30px;
         border-top: 1px solid #eeeeee;
     }
+    /* ⭐ 카카오톡 접속 경고 배너 디자인 */
+    .kakao-warning {
+        background-color: #ffe0e0;
+        color: #d32f2f;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        border: 2px solid #ff4b4b;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
-# ⭐ 번호 2개로 완벽 분리!
-ADMIN_ID = "1076053813"         # 👑 대표님 갠톡 (비번 받는 곳)
-CHANNEL_ID = "-1004426603017"   # 📢 단톡방 (주식 알람 쏘는 곳)
+ADMIN_ID = "1076053813"         
+CHANNEL_ID = "-1004426603017"   
 
 EXPIRATION_DATE = datetime.date(2026, 7, 11)
 today = datetime.date.today()
@@ -54,7 +70,6 @@ today = datetime.date.today()
 now_kst = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 current_time = now_kst.time()
 
-# ⭐ 대표님 요청 반영: 종가베팅 시간을 15:15 ~ 15:20으로 칼같이 정밀 조정!
 is_jongbe = datetime.time(15, 15) <= current_time <= datetime.time(15, 20)
 mode_text = "🌙 [종가베팅]" if is_jongbe else "☀️ [장중수급]"
 
@@ -142,7 +157,6 @@ def run_stock_analysis(ui_box=None):
 if is_cron_job:
     if today > EXPIRATION_DATE: st.stop()
     
-    # ⭐ 대표님 핵심 요구사항: 아침 9시 00분 ~ 오후 3시 20분 사이가 아니면 강제 작동 정지!
     if not (datetime.time(9, 0) <= current_time <= datetime.time(15, 20)):
         st.stop()
         
@@ -152,26 +166,37 @@ if is_cron_job:
             target_p = int(res['price'] * (1.05 if is_jongbe else 1.08))
             stop_p = int(res['price'] * (0.97 if is_jongbe else 0.95))
             
-            # 텔레그램 알람에 네이버 증권 링크 추가 완료!
             msg = f"🚨 {mode_text} <a href='https://finance.naver.com/item/main.naver?code={res['code']}'>{res['name']}({res['code']})</a>\n🏢 시총: {res['marcap_str']} | 🏷️ {res['sector']}\n{res['rank']} {res['action']}\n⭐ 총점: {res['score']}점\n📝 근거: {' / '.join(res['details'])}\n📌 매수: {res['price']:,}원\n🎯 목표: {target_p:,}원\n🚨 손절: {stop_p:,}원"
             
-            # HTML 적용시켜서 파란색 글씨로 예쁘게 송출!
             requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHANNEL_ID}&text={urllib.parse.quote(msg)}&parse_mode=HTML")
     st.stop()
 
 
-# --- ⭐ 완벽 통제 로그인 (자동 로그인 탑재!) ---
-if "auth" not in st.session_state:
-    if cookies.get("is_logged_in") == "yes":
-        st.session_state.auth = True
-        st.session_state.req_name = cookies.get("vip_name")
-    else:
+# --- ⭐ 완벽 통제 로그인 (10년 영구 자동 로그인!) ---
+saved_vip_name = cookie_manager.get(cookie="vip_name")
+
+if saved_vip_name:
+    st.session_state.auth = True
+    st.session_state.req_name = saved_vip_name
+else:
+    if "auth" not in st.session_state:
         st.session_state.auth = False
         st.session_state.req_name = ""
     st.session_state.otp = None
 
 if not st.session_state.auth:
     st.title("🔒 세력 포착 AI (VIP 전용)")
+    
+    # ⭐ 지인분들 튕김 방지용 강력 경고 배너!
+    st.markdown("""
+    <div class="kakao-warning">
+        🚨 잠깐! 현재 <b>카카오톡 내부 창</b>으로 열고 계신가요?<br><br>
+        카톡 내부 창은 닫는 순간 자동로그인 기록이 <b>모두 삭제</b>됩니다!<br>
+        화면 우측 하단의 점 3개(…)를 누르고 반드시<br>
+        <b>👉 [다른 브라우저로 열기] (크롬, 사파리, 삼성인터넷) 👈</b><br>
+        로 접속하셔야 평생 자동 로그인이 유지됩니다!
+    </div>
+    """, unsafe_allow_html=True)
     
     st.error("⚠️ 외부인 접속 통제 구역입니다. 관리자의 승인이 있어야만 접속 가능합니다.")
     if st.session_state.otp is None:
@@ -186,7 +211,6 @@ if not st.session_state.auth:
                 st.session_state.otp = str(random.randint(1000, 9999))
                 
                 msg = f"🚨 [VIP 앱 접속 요청]\n👤 누군가 접속을 시도합니다: {req_name}\n🔑 이 사람을 허락하시려면 다음 4자리 코드를 알려주세요: {st.session_state.otp}"
-                # 비번 요청은 ADMIN_ID (대표님 갠톡) 으로 발송!
                 requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={ADMIN_ID}&text={urllib.parse.quote(msg)}")
                 
                 st.success("✅ 승인 요청이 전송되었습니다! 전달받은 코드를 입력하세요.")
@@ -197,9 +221,9 @@ if not st.session_state.auth:
         
         if st.button("승인 확인 및 자동 로그인 등록"):
             if entered_otp == st.session_state.otp:
-                cookies["is_logged_in"] = "yes"
-                cookies["vip_name"] = st.session_state.req_name
-                cookies.save() 
+                # ⭐ 지금부터 10년 뒤(3650일) 만료되는 영구 쿠키 굽기!
+                expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
+                cookie_manager.set("vip_name", st.session_state.req_name, expires_at=expire_date)
                 
                 st.session_state.auth = True
                 st.rerun()
@@ -216,9 +240,8 @@ if not st.session_state.auth:
     master_pwd = st.text_input("마스터 비밀번호", type="password")
     if st.button("프리패스 접속"):
         if master_pwd == "7777": 
-            cookies["is_logged_in"] = "yes"
-            cookies["vip_name"] = "👑 VIP 멤버"
-            cookies.save()
+            expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
+            cookie_manager.set("vip_name", "👑 VIP 멤버", expires_at=expire_date)
             
             st.session_state.auth = True
             st.session_state.req_name = "👑 VIP 멤버"
