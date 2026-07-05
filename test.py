@@ -63,7 +63,6 @@ st.markdown("""
         margin-bottom: 20px;
         border: 2px solid #ff4b4b;
     }
-    /* ⭐ 새로 추가된 꿀팁 배너 디자인 (눈에 띄는 파란색) */
     .tip-banner {
         background-color: #e3f2fd;
         color: #0d47a1;
@@ -212,7 +211,6 @@ else:
 if not st.session_state.auth:
     st.title("🔒 세력 포착 AI (VIP 전용)")
     
-    # ⭐ 바탕화면 아이콘 추가를 유도하는 꿀팁 배너!
     st.markdown("""
     <div class="tip-banner">
         💡 <b>스마트폰 바탕화면에 '아이콘'을 만들어두세요!</b><br><br>
@@ -318,10 +316,29 @@ if not st.session_state.auth:
 
 # 메인 화면
 st.title("🚀 세력 포착 AI 시스템 (Pro)")
+
+# ⭐ 로그인 성공자(메인 화면)에게도 바탕화면 아이콘 추가를 유도하는 꿀팁 배너!
+st.markdown("""
+<div class="tip-banner">
+    💡 <b>단골 접속 꿀팁!</b><br>
+    지금 화면 메뉴(⋮ 또는 ≡)를 눌러 <b>[홈 화면에 추가]</b>를 해두세요!<br>
+    바탕화면 아이콘으로 접속하면 평생 비번 없이 1초 자동 접속됩니다. 🚀
+</div>
+""", unsafe_allow_html=True)
+
 st.info(f"🎉 **{st.session_state.req_name}**님, 환영합니다! (자동 로그인 완료)")
 
-if is_jongbe: st.error("🌙 현재 모드: 찐 종가베팅 발굴")
-else: st.success("🔥 현재 모드: 장중 500억 이상 찐 주도주 압축")
+# ⭐ 포착 근거를 한눈에 볼 수 있도록 모드 알림창에 상세 내용 추가!
+if is_jongbe: 
+    st.error("""
+    **🌙 현재 모드: 찐 종가베팅 발굴**<br><br>
+    🔍 **포착 기준:** 거래대금 500억 돌파 / 거래량 1.5배 이상 급증 / 볼린저밴드 상단 및 중심선 안착 / OBV 세력 매집 포착
+    """)
+else: 
+    st.success("""
+    **🔥 현재 모드: 장중 500억 이상 찐 주도주 압축**<br><br>
+    🔍 **포착 기준:** 거래대금 500억 돌파 / 거래량 1.5배 이상 급증 / 볼린저밴드 상단 및 중심선 안착 / OBV 세력 매집 포착
+    """)
 
 if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' in st.session_state:
     st.session_state['running'] = True
@@ -345,3 +362,24 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!") or 'running' 
             
             col1, col2, col3 = st.columns(3)
             col1.metric("📌 매수가", f"{res['price']:,}원")
+            col2.metric("🎯 목표가", f"{target_p:,}원")
+            col3.metric("🚨 손절가", f"{stop_p:,}원")
+            st.markdown("---")
+    else:
+        st.warning("😭 현재 AI 기준을 통과한 강력한 주도주가 없습니다.")
+        
+    st.markdown("""
+        <div class="disclaimer">
+            ⚠️ <b>투자 유의사항 (면책 조항)</b><br>
+            본 시스템이 제공하는 모든 정보는 AI 알고리즘에 기반한 단순 참고용 데이터이며, 절대적인 수익을 보장하지 않습니다.<br>
+            종목 매수/매도에 대한 최종 판단과 모든 법적/재무적 책임은 전적으로 투자자 본인에게 귀속됩니다.
+        </div>
+    """, unsafe_allow_html=True)
+        
+    countdown_box = st.empty()
+    for i in range(600, 0, -1):
+        mins, secs = divmod(i, 60)
+        countdown_box.info(f"⏰ 다음 AI 스캔까지 대기 중... ({mins}분 {secs:02d}초 남음)")
+        time.sleep(1)
+        
+    st.rerun()
