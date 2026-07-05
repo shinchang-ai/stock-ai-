@@ -14,18 +14,14 @@ import extra_streamlit_components as stx
 
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
-# 영구 쿠키 매니저 실행
-@st.cache_resource
-def get_cookie_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_cookie_manager()
+# ⭐ 에러 원인 해결: 창고에서 빼서 바로 실행하도록 수정!
+cookie_manager = stx.CookieManager()
 
 # 프론트엔드 쿠키 로딩 대기 딜레이 제거
 if cookie_manager.get_all() is None:
     st.stop() 
 
-# ⭐ 대표님 요청 반영: 대표님이 바쁘셔도 승인번호가 1시간 동안 지워지지 않는 서버 공유 보관소!
+# 대표님이 바쁘셔도 승인번호가 1시간 동안 지워지지 않는 서버 공유 보관소!
 @st.cache_resource
 def get_approval_db():
     return {}
@@ -61,7 +57,7 @@ st.markdown("""
         margin-bottom: 20px;
         border: 2px solid #ff4b4b;
     }
-    /* ⭐ 대표님 요청 반영: 모바일 폰 화면 크기에 맞춰 글자 및 픽셀 자동 축소 디자인 */
+    /* 모바일 폰 화면 크기에 맞춰 글자 및 픽셀 자동 축소 디자인 */
     @media (max-width: 640px) {
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.25rem !important; }
@@ -186,7 +182,7 @@ if is_cron_job:
     st.stop()
 
 
-# --- ⭐ 완벽 통제 로그인 (10년 영구 자동 로그인 및 타임아웃 1시간 연장!) ---
+# --- 완벽 통제 로그인 (10년 영구 자동 로그인 및 타임아웃 1시간 연장!) ---
 saved_vip_name = cookie_manager.get(cookie="vip_name")
 
 if saved_vip_name:
@@ -203,7 +199,7 @@ if not st.session_state.auth:
     st.markdown("""
     <div class="kakao-warning">
         🚨 잠깐! 현재 <b>카카오톡 내부 창</b>으로 열고 계신가요?<br><br>
-        카톡 내부 창은 닫는 순간 자동로그인 기록이 <b>모든 삭제</b>됩니다!<br>
+        카톡 내부 창은 닫는 순간 자동로그인 기록이 <b>모두 삭제</b>됩니다!<br>
         화면 우측 하단의 점 3개(…)를 누르고 반드시<br>
         <b>👉 [다른 브라우저로 열기] (크롬, 사파리, 삼성인터넷) 👈</b><br>
         로 접속하셔야 평생 자동 로그인이 유지됩니다!
@@ -220,7 +216,7 @@ if not st.session_state.auth:
     if req_name:
         if req_name in approval_db:
             otp_info = approval_db[req_name]
-            # ⭐ 1시간(3600초) 이내면 대표님이 다른 일 하셔도 번호가 살아있음!
+            # 1시간(3600초) 이내면 대표님이 다른 일 하셔도 번호가 살아있음!
             if (datetime.datetime.now() - otp_info["time"]).total_seconds() < 3600:
                 active_otp = otp_info["otp"]
             else:
@@ -242,7 +238,7 @@ if not st.session_state.auth:
                 st.success("✅ 승인 요청이 전송되었습니다! 아래에 전달받은 코드를 입력하세요.")
                 st.rerun()
     else:
-        # ⭐ 대표님이 늦게 봐도 지인이 다시 들어와서 이름만 치면 이 화면으로 바로 복구됨!
+        # 대표님이 늦게 봐도 지인이 다시 들어와서 이름만 치면 이 화면으로 바로 복구됨!
         st.success(f"📌 [{req_name}]님에 대한 승인 요청이 활성화되어 있습니다. (1시간 동안 유효)")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
