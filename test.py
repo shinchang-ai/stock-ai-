@@ -14,14 +14,8 @@ import extra_streamlit_components as stx
 
 st.set_page_config(page_title="세력 포착 AI 시스템", page_icon="🚀", layout="centered")
 
-# ⭐ 핵심 해결책: 쿠키 스캐너에 고정 이름표(key="shin_cookie")를 달아서 강제 종료 후에도 안 떨어지게 꽉 묶음!
+# 쿠키 스캐너에 고정 이름표를 달아서 절대 안 떨어지게 묶음!
 cookie_manager = stx.CookieManager(key="shin_cookie")
-
-# 앱 켜질 때 0.5초 대기 후 새로고침해서 폰 주머니에 있는 쿠키를 100% 꺼내오게 만듦
-if "first_boot" not in st.session_state:
-    st.session_state["first_boot"] = True
-    time.sleep(0.5)
-    st.rerun()
 
 # 프론트엔드 쿠키 로딩 대기
 if cookie_manager.get_all() is None:
@@ -63,7 +57,6 @@ st.markdown("""
         margin-bottom: 20px;
         border: 2px solid #ff4b4b;
     }
-    /* 모바일 폰 화면 크기에 맞춰 글자 및 픽셀 자동 축소 디자인 */
     @media (max-width: 640px) {
         h1 { font-size: 1.5rem !important; }
         h2 { font-size: 1.25rem !important; }
@@ -188,7 +181,7 @@ if is_cron_job:
     st.stop()
 
 
-# --- 완벽 통제 로그인 (10년 영구 자동 로그인 및 타임아웃 1시간 연장!) ---
+# --- 완벽 통제 로그인 (스마트폰 강제종료 1000% 방어형!) ---
 saved_vip_name = cookie_manager.get(cookie="vip_name")
 
 if saved_vip_name:
@@ -222,7 +215,6 @@ if not st.session_state.auth:
     if req_name:
         if req_name in approval_db:
             otp_info = approval_db[req_name]
-            # 1시간(3600초) 이내면 대표님이 다른 일 하셔도 번호가 살아있음!
             if (datetime.datetime.now() - otp_info["time"]).total_seconds() < 3600:
                 active_otp = otp_info["otp"]
             else:
@@ -247,20 +239,28 @@ if not st.session_state.auth:
         st.success(f"📌 [{req_name}]님에 대한 승인 요청이 활성화되어 있습니다. (1시간 동안 유효)")
         entered_otp = st.text_input("승인 코드 4자리", type="password")
         
-        if st.button("승인 확인 및 자동 로그인 등록"):
+        # ⭐ 해결책 1: 버튼을 분리해서 폰에 완벽하게 저장할 시간을 줍니다!
+        if st.button("1️⃣ 승인 확인 및 영구 출입증 발급"):
             if entered_otp == active_otp:
                 expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
                 cookie_manager.set("vip_name", req_name, expires_at=expire_date)
-                
-                if req_name in approval_db:
-                    del approval_db[req_name]
-                    
-                st.session_state.auth = True
-                st.session_state.req_name = req_name
-                st.rerun()
+                st.session_state['login_ready'] = req_name
             else:
                 st.error("❌ 코드가 틀렸습니다.")
                 
+        # ⭐ 쿠키가 안전하게 폰에 심어지면 그제야 입장 버튼이 뜹니다.
+        if st.session_state.get('login_ready') == req_name:
+            st.success("✅ 폰에 영구 출입증이 완벽하게 저장되었습니다!")
+            st.info("👇 아래 버튼을 누르면 시스템에 입장합니다. (이후 강제종료해도 비번 안 묻습니다!)")
+            if st.button("2️⃣ 🚀 세력 포착 AI 시스템 입장하기 (클릭!)"):
+                if req_name in approval_db:
+                    del approval_db[req_name]
+                st.session_state.auth = True
+                st.session_state.req_name = req_name
+                del st.session_state['login_ready']
+                st.rerun()
+                
+        st.markdown("---")
         if st.button("이름 바꾸거나 다시 요청하기"):
             if req_name in approval_db:
                 del approval_db[req_name]
@@ -271,16 +271,23 @@ if not st.session_state.auth:
     
     st.warning("👑 [친한 지인/관리자 전용] 마스터 키를 입력하면 즉시 접속되며, 이후 자동 로그인됩니다.")
     master_pwd = st.text_input("마스터 비밀번호", type="password")
-    if st.button("프리패스 접속"):
+    
+    # ⭐ 마스터 비번도 똑같이 2단계로 분리해서 폰에 쿠키 쾅쾅! 박아줍니다.
+    if st.button("1️⃣ 프리패스 출입증 발급"):
         if master_pwd == "7777": 
             expire_date = datetime.datetime.now() + datetime.timedelta(days=3650)
             cookie_manager.set("vip_name", "👑 VIP 멤버", expires_at=expire_date)
-            
-            st.session_state.auth = True
-            st.session_state.req_name = "👑 VIP 멤버"
-            st.rerun()
+            st.session_state['master_ready'] = True
         else:
             st.error("❌ 마스터 코드가 일치하지 않습니다.")
+
+    if st.session_state.get('master_ready'):
+        st.success("✅ 마스터 영구 출입증 저장 완료!")
+        if st.button("2️⃣ 🚀 시스템 즉시 입장 (클릭!)"):
+            st.session_state.auth = True
+            st.session_state.req_name = "👑 VIP 멤버"
+            del st.session_state['master_ready']
+            st.rerun()
             
     st.stop()
 # ------------------------------------------------
