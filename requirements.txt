@@ -4,3 +4,4 @@ ta
 pandas
 requests
 extra-streamlit-components
+pytz
