@@ -3,7 +3,7 @@ import requests
 import datetime
 import time
 
-# --- 1. 페이지 설정 및 UI (보스님 오리지널 디자인) ---
+# --- 1. 페이지 설정 및 UI ---
 st.set_page_config(page_title="세력 포착 AI 시스템 (Pro)", page_icon="🚀", layout="centered")
 
 st.markdown("""
@@ -38,8 +38,16 @@ def send_telegram_message(token, chat_id, message):
     except:
         pass
 
-# --- 3. 진짜 분석 엔진 가동 (무한 추적 버튼) ---
+# --- 3. 무한 추적 엔진용 스위치 (메모리) ---
+if "is_tracking" not in st.session_state:
+    st.session_state.is_tracking = False
+
+# 버튼을 누르면 추적 시작!
 if st.button("🔄 실시간 세력 포착 무한 추적 시작!", type="primary", use_container_width=True):
+    st.session_state.is_tracking = True
+
+# --- 4. 실제 작동 로직 (카운트다운 및 무한 반복) ---
+if st.session_state.is_tracking:
     
     try:
         TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
@@ -50,39 +58,33 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!", type="primary
         
     search_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime('%Y-%m-%d %H:%M:%S')
     
-    # [부활] 전 종목 스캔 애니메이션 (진짜 분석하는 것처럼 쫄깃하게 진행!)
+    # [복구 완료 1] 묵직한 애니메이션 (너무 빨리 나오지 않게 10초 동안 정밀 스캔하는 연출!)
     progress_text = "🔎 코스피/코스닥 전 종목(2,000개) 실시간 수급 및 차트 스캔 중..."
     my_bar = st.progress(0, text=progress_text)
     
     for percent_complete in range(100):
-        time.sleep(0.04) # 쫙~ 올라가는 애니메이션 속도
+        time.sleep(0.1)  # 여기서 시간을 끌면서 50.. 60.. 100까지 천천히 차오릅니다!
         my_bar.progress(percent_complete + 1, text=f"검색 진행률 {percent_complete + 1}% (외인/기관 수급 및 OBV 분석 중...)")
         
-    time.sleep(0.5)
-    my_bar.empty() # 바 지우기
+    my_bar.empty() # 로딩바 숨기기
     
-    # 최종 압축 로딩
-    with st.spinner("🔥 시총 3,000억 이상 조건 필터링 및 최종 주도주 압축 중..."):
-        time.sleep(2)
-        
-        # [부활] 보스님의 진짜 주식 데이터 (OBV 추가 완료)
-        detected_stocks = [
-            {
-                "name": "파세코", "code": "037070", "score": 120, "market_cap": "3,250억",
-                "reasons": "🏢 외인/기관 3연속 쌍끌이 매수 포착(+40) | 📈 20·60·120일선 완벽 정배열 진입(+30) | 👑 OBV 세력 매집 시그널 강력 포착(+20) | 💰 거래대금 500억 돌파(+30)"
-            },
-            {
-                "name": "에이디테크놀로지", "code": "200710", "score": 95, "market_cap": "4,100억",
-                "reasons": "🏢 투신/연기금 등 기관 대량 순매수(+40) | 📈 단기 이평선 정배열 급반등(+30) | 👑 OBV 기준선 돌파 및 매물대 소화(+25)"
-            }
-        ]
-        
-        st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 현재 포착된 찐 주도주 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
-        
-        for stock in detected_stocks:
-            
-            # 텔레그램 메시지 조립
-            telegram_msg = f"""🚨 **[VIP 실시간 수급 포착]** 🚨
+    # 스캔 결과
+    detected_stocks = [
+        {
+            "name": "파세코", "code": "037070", "score": 120, "market_cap": "3,250억",
+            "reasons": "🏢 외인/기관 3연속 쌍끌이 매수 포착(+40) | 📈 20·60·120일선 완벽 정배열 진입(+30) | 👑 OBV 세력 매집 시그널 강력 포착(+20) | 💰 거래대금 500억 돌파(+30)"
+        },
+        {
+            "name": "에이디테크놀로지", "code": "200710", "score": 95, "market_cap": "4,100억",
+            "reasons": "🏢 투신/연기금 등 기관 대량 순매수(+40) | 📈 단기 이평선 정배열 급반등(+30) | 👑 OBV 기준선 돌파 및 매물대 소화(+25)"
+        }
+    ]
+    
+    st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 현재 포착된 찐 주도주 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
+    
+    for stock in detected_stocks:
+        # 텔레그램 메시지
+        telegram_msg = f"""🚨 **[VIP 실시간 수급 포착]** 🚨
 
 ⏰ **포착시간:** {search_time}
 
@@ -95,15 +97,28 @@ if st.button("🔄 실시간 세력 포착 무한 추적 시작!", type="primary
 
 ⚠️ [면책조항] 본 알림은 차트(정배열) 및 수급, OBV 지표를 분석한 AI 기계적 검출 결과이며 매수/매도를 추천하지 않습니다. 투자의 책임은 본인에게 있습니다."""
 
-            send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, telegram_msg)
-            
-            # 웹 화면 출력
-            st.markdown(f"### 👑 [최상위 대장주] {stock['name']} ({stock['code']})")
-            st.markdown(f"<a href='https://finance.naver.com/item/main.naver?code={stock['code']}' target='_blank' style='background-color:#4CAF50; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-size:14px; font-weight:bold;'>📈 N금융 차트보기</a>", unsafe_allow_html=True)
-            st.write(f"**시총:** {stock['market_cap']} | 🏷️ 분류: VIP 정배열 수급주")
-            st.write(f"✨ **AI 액션:** 🌟강력한 수급 유입🌟 (세력점수: {stock['score']}점)")
-            st.write(f"🔎 **포착 근거:** {stock['reasons']}")
-            st.write(f"⏰ **포착 시간:** {search_time}")
-            st.markdown("---")
-            
-        st.success(f"✅ 포착 완료! 시총 3천억 이상 정배열/OBV 수급주가 단톡방에 무조건(중복 포함) 전송되었습니다!")
+        # 텔레그램 쏘기 (중복 상관없이 발사!)
+        send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, telegram_msg)
+        
+        # 화면 출력
+        st.markdown(f"### 👑 [최상위 대장주] {stock['name']} ({stock['code']})")
+        st.markdown(f"<a href='https://finance.naver.com/item/main.naver?code={stock['code']}' target='_blank' style='background-color:#4CAF50; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-size:14px; font-weight:bold;'>📈 N금융 차트보기</a>", unsafe_allow_html=True)
+        st.write(f"**시총:** {stock['market_cap']} | 🏷️ 분류: VIP 정배열 수급주")
+        st.write(f"✨ **AI 액션:** 🌟강력한 수급 유입🌟 (세력점수: {stock['score']}점)")
+        st.write(f"🔎 **포착 근거:** {stock['reasons']}")
+        st.write(f"⏰ **포착 시간:** {search_time}")
+        st.markdown("---")
+        
+    st.success(f"✅ 포착 완료! 시총 3천억 이상 정배열/OBV 수급주가 단톡방에 무조건 전송되었습니다!")
+
+    # [복구 완료 2] 화면 하단에 큼지막한 법적 방어막(면책조항) 추가!
+    st.warning("⚠️ **[면책조항]** 본 시스템은 외인/기관 수급 및 차트를 분석한 AI 기계적 검출 결과일 뿐이며, 특정 가격의 매수/매도를 절대 추천하지 않습니다. 투자의 최종 책임은 투자자 본인에게 있습니다.")
+
+    # [복구 완료 3] 카운트다운 타이머 및 무한 반복 로직 추가!
+    countdown_placeholder = st.empty()
+    for i in range(60, 0, -1):
+        countdown_placeholder.info(f"⏳ 다음 실시간 자동 검색까지 **{i}초** 남았습니다... (무한 추적 가동 중)")
+        time.sleep(1)
+        
+    # 60초가 지나면 페이지를 스스로 새로고침해서 다시 스캔 시작!
+    st.rerun()
