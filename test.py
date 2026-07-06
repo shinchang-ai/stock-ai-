@@ -49,14 +49,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. 완전 무인 스캔 엔진 (버튼 삭제! 접속 즉시 실행!) ---
+# --- 3. 완전 무인 스캔 엔진 (접속 즉시 실행!) ---
 now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 is_market_open = (now.hour == 9 and now.minute >= 0) or (9 < now.hour < 15) or (now.hour == 15 and now.minute <= 20)
 
-# 장 마감 시간에는 크론잡이 접속해도 헛수고 안 하고 바로 멈춤! (톡방 절대 안 울림)
 if not is_market_open:
     st.warning("🌙 현재는 장 마감 시간입니다. (Cron-job 외부 서버가 접속했지만, 로봇이 휴식 중이므로 스캔하지 않습니다.)")
-    st.stop() # 여기서 프로그램 강제 종료! 더 이상 아래로 안 내려감!
+    st.stop()
 
 if now.hour == 15 and now.minute >= 15 and now.minute <= 20:
     st.error("🚨 [종가 베팅 시간] 15:15 ~ 15:20 종가 종목 집중 분석 중!")
@@ -92,7 +91,6 @@ try:
         df_chart['MA120'] = df_chart['Close'].rolling(120).mean()
         last = df_chart.iloc[-1]
         
-        # 조건: 정배열 & 볼린저 중심 돌파
         if (last['Close'] > last['MA20']) and (last['MA20'] > last['MA60']) and (last['MA60'] > last['MA120']):
             detected_stocks.append({
                 "name": name, "code": code, "score": 98,
@@ -106,10 +104,26 @@ except Exception as e:
 
 st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 찐 주도주 포착 결과 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
 
-# 🚨 [핵심 수정] 포착된 종목이 1개 이상일 때만 텔레그램 발송!! (0개면 절대 안 보냄!)
 if len(detected_stocks) > 0:
     for stock in detected_stocks:
-        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨\n\n⏰ {search_time}\n\n👑 **종목명:** {stock['name']} ({stock['code']})\n📊 **시가총액:** {stock['marcap']}\n💰 **거래대금:** {stock['amount']}\n📈 **당일거래량:** {stock['volume']}\n\n🔎 **[ 6대 포착 근거 ]**\n{stock['reasons'].replace(' | ', chr(10))}\n\n⚠️ [면책조항] 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
+        # [복구 완료] 텔레그램 메시지에 네이버 차트 링크 명확하게 삽입!!
+        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨
+
+⏰ {search_time}
+
+👑 **종목명:** {stock['name']} ({stock['code']})
+📊 **시가총액:** {stock['marcap']}
+💰 **거래대금:** {stock['amount']}
+📈 **당일거래량:** {stock['volume']}
+
+🔎 **[ 6대 포착 근거 ]**
+{stock['reasons'].replace(' | ', chr(10))}
+
+🔗 **[네이버 차트 바로가기]**
+https://finance.naver.com/item/main.naver?code={stock['code']}
+
+⚠️ [면책조항] 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
+
         send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, telegram_msg)
         
         st.markdown(f"### 👑 [최상위 대장주] {stock['name']} ({stock['code']})")
@@ -122,5 +136,3 @@ else:
     st.info("조건에 완벽하게 일치하는 주도주가 없어 텔레그램 알람을 생략합니다.")
 
 st.warning("⚠️ **[면책조항]** 본 시스템은 투자를 권유하지 않으며, 최종 책임은 본인에게 있습니다.")
-
-# 타이머 삭제! (Cron-job이 10분마다 알아서 새로고침 해주니까요!)
