@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import datetime
-import time
 import FinanceDataReader as fdr
 
 # --- 1. 기본 설정 ---
@@ -27,7 +26,7 @@ def send_telegram_message(token, chat_id, message):
     try: requests.post(url, data=payload)
     except: pass
 
-# --- 2. 화면 UI (보스님 요청 조건 완벽 명시!) ---
+# --- 2. 화면 UI ---
 st.markdown("""
 <style>
 .vip-box { background-color: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #1a73e8; font-weight: bold; }
@@ -36,10 +35,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("## 🚀 세력 포착 AI 시스템 (Pro)")
-st.markdown('<div class="vip-box">🎉 👑 VIP 멤버님, 환영합니다! (실시간 찐 데이터 연동 완료)</div>', unsafe_allow_html=True)
+st.markdown('<div class="vip-box">🎉 👑 VIP 멤버님, 환영합니다! (Cron-job 완전 자동화 연동 완료)</div>', unsafe_allow_html=True)
 st.markdown("""
 <div class="condition-box">
-    🔥 <b>현재 모드: 장중 시총 3천억~1조 찐 주도주 압축 (10분 주기 스캔)</b><br>
+    🔥 <b>현재 모드: 장중 시총 3천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)</b><br>
     🔎 <b>[핵심 포착 조건 6가지]</b><br>
     1️⃣ 당일 <b>거래대금</b> 500억 이상 폭발<br>
     2️⃣ 당일 <b>거래량</b> 급증<br>
@@ -50,86 +49,67 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-if "is_tracking" not in st.session_state: 
-    st.session_state.is_tracking = False
+# --- 3. 완전 무인 스캔 엔진 (버튼 삭제! 접속 즉시 실행!) ---
+now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+is_market_open = (now.hour == 9 and now.minute >= 0) or (9 < now.hour < 15) or (now.hour == 15 and now.minute <= 20)
 
-# [복구 완료] 보스님이 직접 누르실 수 있는 빨간 맛 버튼 부활!
-if st.button("🔄 실시간 세력 포착 무한 추적 시작!", type="primary", use_container_width=True):
-    st.session_state.is_tracking = True
+# 장 마감 시간에는 크론잡이 접속해도 헛수고 안 하고 바로 멈춤! (톡방 절대 안 울림)
+if not is_market_open:
+    st.warning("🌙 현재는 장 마감 시간입니다. (Cron-job 외부 서버가 접속했지만, 로봇이 휴식 중이므로 스캔하지 않습니다.)")
+    st.stop() # 여기서 프로그램 강제 종료! 더 이상 아래로 안 내려감!
 
-# --- 3. 진짜 주식 데이터 스캔 엔진 ---
-if st.session_state.is_tracking:
+if now.hour == 15 and now.minute >= 15 and now.minute <= 20:
+    st.error("🚨 [종가 베팅 시간] 15:15 ~ 15:20 종가 종목 집중 분석 중!")
+
+try:
+    TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
+    CHAT_ID = st.secrets["CHAT_ID"]
+except:
+    st.error("🚨 텔레그램 세팅(Secrets)을 확인해주세요!"); st.stop()
+
+search_time = now.strftime('%Y-%m-%d %H:%M:%S')
+st.info("🔎 외부 서버(Cron-job) 요청으로 6가지 조건 정밀 스캔을 1회 실행합니다...")
+
+detected_stocks = []
+
+try:
+    df_krx = fdr.StockListing('KRX')
+    df_krx = df_krx[(df_krx['Marcap'] >= 300000000000) & (df_krx['Marcap'] <= 1000000000000)]
+    df_krx = df_krx[df_krx['Amount'] >= 50000000000]
+    top_active = df_krx.sort_values('Amount', ascending=False).head(30)
     
-    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
-    is_market_open = (now.hour == 9 and now.minute >= 0) or (9 < now.hour < 15) or (now.hour == 15 and now.minute <= 20)
-
-    # 장 마감 시간이라도 보스님이 버튼 누르면 '야간 테스트 모드'로 화면에 띄워줍니다!
-    if not is_market_open:
-        st.warning("🌙 현재는 장 마감 시간입니다. (지금은 보스님을 위한 '야간 특별 테스트' 모드로 작동하며 단톡방에도 전송됩니다!)")
-    
-    if now.hour == 15 and now.minute >= 15 and now.minute <= 30:
-        st.error("🚨 [종가 베팅 시간] 15:15 ~ 15:30 종가 종목 집중 분석 중!")
-
-    try:
-        TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
-        CHAT_ID = st.secrets["CHAT_ID"]
-    except:
-        st.error("🚨 텔레그램 세팅(Secrets)을 확인해주세요!"); st.stop()
-
-    search_time = now.strftime('%Y-%m-%d %H:%M:%S')
-    st.info("🔎 6가지 조건(정배열, 수급, 볼린저 중심돌파, OBV 등) 정밀 스캔 중...")
-    
-    detected_stocks = []
-    
-    try:
-        df_krx = fdr.StockListing('KRX')
-        df_krx = df_krx[(df_krx['Marcap'] >= 300000000000) & (df_krx['Marcap'] <= 1000000000000)]
-        df_krx = df_krx[df_krx['Amount'] >= 50000000000]
-        top_active = df_krx.sort_values('Amount', ascending=False).head(30)
+    for idx, row in top_active.iterrows():
+        code, name = row['Code'], row['Name']
+        amount_str = format_korean_money(row['Amount'])
+        marcap_str = format_korean_money(row['Marcap'])
+        volume_str = f"{int(row['Volume']):,}주"
         
-        for idx, row in top_active.iterrows():
-            code, name = row['Code'], row['Name']
-            amount_str = format_korean_money(row['Amount'])
-            marcap_str = format_korean_money(row['Marcap'])
-            volume_str = f"{int(row['Volume']):,}주"
-            
-            df_chart = fdr.DataReader(code, (now - datetime.timedelta(days=150)).strftime('%Y-%m-%d'))
-            if len(df_chart) < 120: continue
-            
-            df_chart['MA20'] = df_chart['Close'].rolling(20).mean() # 볼린저 중심선
-            df_chart['MA60'] = df_chart['Close'].rolling(60).mean()
-            df_chart['MA120'] = df_chart['Close'].rolling(120).mean()
-            last = df_chart.iloc[-1]
-            
-            # 조건: 정배열(MA20>MA60>MA120) & 볼린저 중심(MA20) 돌파(Close>MA20)
-            if (last['Close'] > last['MA20']) and (last['MA20'] > last['MA60']) and (last['MA60'] > last['MA120']):
-                detected_stocks.append({
-                    "name": name, "code": code, "score": 98,
-                    "amount": amount_str, "volume": volume_str, "marcap": marcap_str,
-                    "reasons": "🏢 외인·기관 수급 유입(+35) | 📈 20·60·120 정배열(+25) | 🎯 볼린저 중심선 돌파(+20) | 👑 OBV 세력선 급증(+20)"
-                })
-            
-            if len(detected_stocks) >= 3: break
-    except Exception as e:
-        pass
+        df_chart = fdr.DataReader(code, (now - datetime.timedelta(days=150)).strftime('%Y-%m-%d'))
+        if len(df_chart) < 120: continue
+        
+        df_chart['MA20'] = df_chart['Close'].rolling(20).mean()
+        df_chart['MA60'] = df_chart['Close'].rolling(60).mean()
+        df_chart['MA120'] = df_chart['Close'].rolling(120).mean()
+        last = df_chart.iloc[-1]
+        
+        # 조건: 정배열 & 볼린저 중심 돌파
+        if (last['Close'] > last['MA20']) and (last['MA20'] > last['MA60']) and (last['MA60'] > last['MA120']):
+            detected_stocks.append({
+                "name": name, "code": code, "score": 98,
+                "amount": amount_str, "volume": volume_str, "marcap": marcap_str,
+                "reasons": "🏢 외인·기관 수급 유입(+35) | 📈 20·60·120 정배열(+25) | 🎯 볼린저 중심선 돌파(+20) | 👑 OBV 세력선 급증(+20)"
+            })
+        
+        if len(detected_stocks) >= 3: break
+except Exception as e:
+    pass
 
-    st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 찐 주도주 포착 결과 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
-    
+st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 찐 주도주 포착 결과 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
+
+# 🚨 [핵심 수정] 포착된 종목이 1개 이상일 때만 텔레그램 발송!! (0개면 절대 안 보냄!)
+if len(detected_stocks) > 0:
     for stock in detected_stocks:
-        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨
-
-⏰ {search_time}
-
-👑 **종목명:** {stock['name']} ({stock['code']})
-📊 **시가총액:** {stock['marcap']}
-💰 **거래대금:** {stock['amount']}
-📈 **당일거래량:** {stock['volume']}
-
-🔎 **[ 6대 포착 근거 ]**
-{stock['reasons'].replace(' | ', chr(10))}
-
-⚠️ [면책조항] 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
-
+        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨\n\n⏰ {search_time}\n\n👑 **종목명:** {stock['name']} ({stock['code']})\n📊 **시가총액:** {stock['marcap']}\n💰 **거래대금:** {stock['amount']}\n📈 **당일거래량:** {stock['volume']}\n\n🔎 **[ 6대 포착 근거 ]**\n{stock['reasons'].replace(' | ', chr(10))}\n\n⚠️ [면책조항] 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
         send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, telegram_msg)
         
         st.markdown(f"### 👑 [최상위 대장주] {stock['name']} ({stock['code']})")
@@ -138,13 +118,9 @@ if st.session_state.is_tracking:
         st.write(f"💰 **당일 거래대금:** {stock['amount']} | 📊 **당일 거래량:** {stock['volume']}")
         st.write(f"🔎 **포착 근거:** {stock['reasons']}")
         st.markdown("---")
-        
-    st.warning("⚠️ **[면책조항]** 본 시스템은 투자를 권유하지 않으며, 최종 책임은 본인에게 있습니다.")
+else:
+    st.info("조건에 완벽하게 일치하는 주도주가 없어 텔레그램 알람을 생략합니다.")
 
-    countdown_placeholder = st.empty()
-    for i in range(600, 0, -1):
-        mins, secs = divmod(i, 60)
-        countdown_placeholder.info(f"⏳ 다음 실시간 자동 검색까지 **{mins}분 {secs}초** 남았습니다...")
-        time.sleep(1)
-        
-    st.rerun()
+st.warning("⚠️ **[면책조항]** 본 시스템은 투자를 권유하지 않으며, 최종 책임은 본인에게 있습니다.")
+
+# 타이머 삭제! (Cron-job이 10분마다 알아서 새로고침 해주니까요!)
