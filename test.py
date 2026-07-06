@@ -29,14 +29,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 2. 텔레그램 발송 함수 ---
+# --- 2. 텔레그램 발송 함수 (에러 범인 색출용으로 교체!) ---
 def send_telegram_message(token, chat_id, message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
     try:
-        requests.post(url, data=payload)
-    except:
-        pass
+        response = requests.post(url, data=payload)
+        # 만약 텔레그램에서 거절(200 OK가 아님)하면 화면에 빨간색으로 에러 이유를 띄움!
+        if response.status_code != 200:
+            st.error(f"🚨 텔레그램 발송 실패! 이유: {response.text}")
+    except Exception as e:
+        st.error(f"🚨 텔레그램 통신 완전 실패! 이유: {e}")
 
 # --- 3. 무한 추적 엔진용 스위치 (메모리) ---
 if "is_tracking" not in st.session_state:
