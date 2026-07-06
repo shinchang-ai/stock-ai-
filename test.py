@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import datetime
+import time
 import FinanceDataReader as fdr
 
 # --- 1. 기본 설정 ---
@@ -35,10 +36,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("## 🚀 세력 포착 AI 시스템 (Pro)")
-st.markdown('<div class="vip-box">🎉 👑 VIP 멤버님, 환영합니다! (Cron-job 완전 자동화 연동 완료)</div>', unsafe_allow_html=True)
+st.markdown('<div class="vip-box">🎉 👑 VIP 멤버님, 환영합니다! (웹 자동 갱신 & 텔레그램 연동 완료)</div>', unsafe_allow_html=True)
 st.markdown("""
 <div class="condition-box">
-    🔥 <b>현재 모드: 장중 시총 3천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)</b><br>
+    🔥 <b>현재 모드: 장중 시총 3천억~1조 찐 주도주 압축 (10분 주기 무한 스캔)</b><br>
     🔎 <b>[핵심 포착 조건 6가지]</b><br>
     1️⃣ 당일 <b>거래대금</b> 500억 이상 폭발<br>
     2️⃣ 당일 <b>거래량</b> 급증<br>
@@ -49,12 +50,16 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. 완전 무인 스캔 엔진 (접속 즉시 실행!) ---
+# [웹 유저용] 성격 급한 사람을 위한 수동 버튼 부활!
+if st.button("🔄 지금 당장 주도주 수동 스캔하기!", type="primary", use_container_width=True):
+    pass # 버튼을 누르면 Streamlit 특성상 화면이 처음부터 다시 실행(새로고침) 되므로 스캔이 즉시 작동함!
+
+# --- 3. 무인 스캔 엔진 (버튼 안 눌러도 앱 켜지면 무조건 1회 실행) ---
 now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 is_market_open = (now.hour == 9 and now.minute >= 0) or (9 < now.hour < 15) or (now.hour == 15 and now.minute <= 20)
 
 if not is_market_open:
-    st.warning("🌙 현재는 장 마감 시간입니다. (Cron-job 외부 서버가 접속했지만, 로봇이 휴식 중이므로 스캔하지 않습니다.)")
+    st.warning("🌙 현재는 장 마감 시간입니다. (내일 오전 9시가 되면 웹 화면과 텔레그램 알람이 자동 재개됩니다.)")
     st.stop()
 
 if now.hour == 15 and now.minute >= 15 and now.minute <= 20:
@@ -67,7 +72,7 @@ except:
     st.error("🚨 텔레그램 세팅(Secrets)을 확인해주세요!"); st.stop()
 
 search_time = now.strftime('%Y-%m-%d %H:%M:%S')
-st.info("🔎 외부 서버(Cron-job) 요청으로 6가지 조건 정밀 스캔을 1회 실행합니다...")
+st.info("🔎 6가지 조건 정밀 스캔을 실행 중입니다...")
 
 detected_stocks = []
 
@@ -102,30 +107,18 @@ try:
 except Exception as e:
     pass
 
+# [웹 화면 출력] 포착된 종목이 0개든 3개든 웹 방문자에게는 결과를 명확히 보여줍니다!
 st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4b; padding:10px; border-radius:5px;'>🔥 찐 주도주 포착 결과 : 총 {len(detected_stocks)}개</h3>", unsafe_allow_html=True)
 
 if len(detected_stocks) > 0:
     for stock in detected_stocks:
-        # [복구 완료] 텔레그램 메시지에 네이버 차트 링크 명확하게 삽입!!
-        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨
-
-⏰ {search_time}
-
-👑 **종목명:** {stock['name']} ({stock['code']})
-📊 **시가총액:** {stock['marcap']}
-💰 **거래대금:** {stock['amount']}
-📈 **당일거래량:** {stock['volume']}
-
-🔎 **[ 6대 포착 근거 ]**
-{stock['reasons'].replace(' | ', chr(10))}
-
-🔗 **[네이버 차트 바로가기]**
-https://finance.naver.com/item/main.naver?code={stock['code']}
-
-⚠️ [면책조항] 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
-
+        # 텔레그램 전송용 메시지 (네이버 링크 포함)
+        telegram_msg = f"""🚨 **[VIP 실시간 주도주 포착]** 🚨\n\n⏰ {search_time}\n\n👑 **종목명:** {stock['name']} ({stock['code']})\n📊 **시가총액:** {stock['marcap']}\n💰 **거래대금:** {stock['amount']}\n📈 **당일거래량:** {stock['volume']}\n\n🔎 **[ 6대 포착 근거 ]**\n{stock['reasons'].replace(' | ', chr(10))}\n\n🔗 **[네이버 차트 보기]**\nhttps://finance.naver.com/item/main.naver?code={stock['code']}\n\n⚠️ 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
+        
+        # 텔레그램 발사!
         send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, telegram_msg)
         
+        # 웹 화면 출력! (링크 포함)
         st.markdown(f"### 👑 [최상위 대장주] {stock['name']} ({stock['code']})")
         st.markdown(f"<a href='https://finance.naver.com/item/main.naver?code={stock['code']}' target='_blank' style='background-color:#4CAF50; color:white; padding:5px 10px; text-decoration:none; border-radius:3px; font-weight:bold;'>📈 N금융 차트보기</a>", unsafe_allow_html=True)
         st.write(f"🏷️ **시가총액:** {stock['marcap']} | **세력점수:** {stock['score']}점")
@@ -133,6 +126,16 @@ https://finance.naver.com/item/main.naver?code={stock['code']}
         st.write(f"🔎 **포착 근거:** {stock['reasons']}")
         st.markdown("---")
 else:
-    st.info("조건에 완벽하게 일치하는 주도주가 없어 텔레그램 알람을 생략합니다.")
+    st.info("현재 6가지 조건에 완벽하게 일치하는 주도주가 없습니다. (텔레그램 알람 생략)")
 
 st.warning("⚠️ **[면책조항]** 본 시스템은 투자를 권유하지 않으며, 최종 책임은 본인에게 있습니다.")
+
+# --- 4. [웹 유저 전용] 10분 자동 새로고침 타이머 ---
+# 이 코드가 있어야 웹 방문자가 화면만 켜놔도 10분마다 알아서 스캔이 돕니다!
+countdown_placeholder = st.empty()
+for i in range(600, 0, -1):
+    mins, secs = divmod(i, 60)
+    countdown_placeholder.info(f"⏳ 화면을 켜두시면 **{mins}분 {secs}초** 뒤에 자동으로 최신 종목을 다시 검색합니다...")
+    time.sleep(1)
+
+st.rerun() # 10분이 지나면 화면을 강제로 새로고침! (처음부터 다시 스캔)
