@@ -37,9 +37,9 @@ st.markdown("## 🚀 세력 포착 AI 시스템 (Pro)")
 st.markdown('<div class="vip-box">🎉 👑 VIP 멤버님, 환영합니다! (웹 & 텔레그램 자동 연동 완료)</div>', unsafe_allow_html=True)
 st.markdown("""
 <div class="condition-box">
-    🔥 <b>현재 모드: 장중 시총 3천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)</b><br>
+    🔥 <b>현재 모드: 장중 시총 2천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)</b><br>
     🔎 <b>[핵심 포착 조건 6가지]</b><br>
-    1️⃣ 당일 <b>거래대금</b> 500억 이상 폭발<br>
+    1️⃣ 당일 <b>거래대금</b> 100억 이상 폭발<br>
     2️⃣ 당일 <b>거래량</b> 급증<br>
     3️⃣ 이평선(20·60·120) 완벽 <b>정배열</b><br>
     4️⃣ <b>기관·외국인</b> 쌍끌이 수급 유입 추정<br>
@@ -58,11 +58,10 @@ if not is_market_open:
     st.warning("🌙 현재는 장 마감 시간입니다. (내일 오전 9시가 되면 웹 화면과 텔레그램 알람이 자동 재개됩니다.)")
     st.stop()
 
-# 💡 종가 베팅 시간 판별기!
+# 종가 베팅 시간 판별기
 is_closing_bet = (now.hour == 15 and 15 <= now.minute <= 20)
 
 if is_closing_bet:
-    # 웹 화면 팝업(Toast) 및 경고 메시지
     st.toast("🚨 3시 15분! 종가 베팅 최적 종목을 스캔합니다!", icon="🎯")
     st.error("🚨 [종가 베팅 시간] 15:15 ~ 15:20 종가 종목 집중 분석 중!")
 
@@ -79,8 +78,11 @@ detected_stocks = []
 
 try:
     df_krx = fdr.StockListing('KRX')
-    df_krx = df_krx[(df_krx['Marcap'] >= 300000000000) & (df_krx['Marcap'] <= 1000000000000)]
-    df_krx = df_krx[df_krx['Amount'] >= 50000000000]
+    # [수정 완료] 시총 2천억 이상 ~ 1조 이하
+    df_krx = df_krx[(df_krx['Marcap'] >= 200000000000) & (df_krx['Marcap'] <= 1000000000000)]
+    # [수정 완료] 거래대금 100억 이상
+    df_krx = df_krx[df_krx['Amount'] >= 10000000000]
+    
     top_active = df_krx.sort_values('Amount', ascending=False).head(30)
     
     for idx, row in top_active.iterrows():
@@ -112,7 +114,6 @@ st.markdown(f"<h3 style='text-align:center; color:white; background-color:#ff4b4
 
 if len(detected_stocks) > 0:
     for stock in detected_stocks:
-        # 💡 텔레그램 메시지 제목 변경 로직 (종가 베팅 vs 일반 주도주)
         title_msg = "🚨 **[🎯 VIP 종가 베팅 최적 종목 포착]** 🚨" if is_closing_bet else "🚨 **[VIP 실시간 주도주 포착]** 🚨"
         
         telegram_msg = f"""{title_msg}\n\n⏰ {search_time}\n\n👑 **종목명:** {stock['name']} ({stock['code']})\n📊 **시가총액:** {stock['marcap']}\n💰 **거래대금:** {stock['amount']}\n📈 **당일거래량:** {stock['volume']}\n\n🔎 **[ 6대 포착 근거 ]**\n{stock['reasons'].replace(' | ', chr(10))}\n\n🔗 **[네이버 차트 보기]**\nhttps://finance.naver.com/item/main.naver?code={stock['code']}\n\n⚠️ 기계적 검출 결과이며 투자의 책임은 본인에게 있습니다."""
@@ -126,7 +127,9 @@ if len(detected_stocks) > 0:
         st.write(f"🔎 **포착 근거:** {stock['reasons']}")
         st.markdown("---")
 else:
-    st.info("현재 6가지 조건에 완벽하게 일치하는 주도주가 없습니다. (텔레그램 알람 생략)")
+    # [수정 완료] 종목이 없을 때도 텔레그램으로 10분마다 알려주는 기능
+    st.info("현재 6가지 조건에 완벽하게 일치하는 주도주가 없습니다.")
+    send_telegram_message(TELEGRAM_TOKEN, CHAT_ID, f"🔎 {search_time}\n\n현재 6대 포착 조건을 만족하는 주도주가 없습니다.\n(10분 후 다시 스캔합니다.)")
 
 st.warning("⚠️ **[면책조항]** 본 시스템은 투자를 권유하지 않으며, 최종 책임은 본인에게 있습니다.")
 
