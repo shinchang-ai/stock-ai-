@@ -28,14 +28,28 @@ def format_korean_money(value):
     return res.strip() + "억"
 
 def send_telegram_message(token, chat_id, message):
-    """텔레그램 봇으로 메시지를 쏘는 함수"""
+    """텔레그램 봇으로 메시지를 쏘는 핵심 함수"""
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
-    try: 
+    try:
         response = requests.post(url, data=payload)
-        return response.status_code == 200 # 성공하면 True 반환
-    except Exception as e: 
+        return response.status_code == 200
+    except:
         return False
+
+def check_vwap_and_alert(token, chat_id, code, name, current_price, vwap_bottom):
+    """현재가가 VWAP 하단 지지선에 도달했는지 확인하고 텔레그램 발송"""
+    # 핵심 로직: 현재가가 VWAP 하단선(검정선) 이하로 떨어졌을 때만 작동
+    if current_price <= vwap_bottom:
+        message = f"""
+🚨 **[VWAP 극강 눌림목 포착]** 🚨
+🎯 **종목:** {name} ({code})
+💸 **현재가:** {current_price:,}원
+📉 **상태:** 분봉 VWAP 하단 지지선(검정선) 도달!
+➡️ 신속히 8282 호가창을 확인하세요!
+"""
+        return send_telegram_message(token, chat_id, message)
+    return False
 
 # ==========================================
 # 3. 웹 화면 UI 및 동작 로직
@@ -43,36 +57,38 @@ def send_telegram_message(token, chat_id, message):
 st.title("🚀 세력 포착 AI 시스템 (Pro)")
 st.markdown("---")
 
-st.subheader("🚨 텔레그램 강제 전송 테스트 구역")
-st.info("아래에 봇 토큰과 챗 아이디를 입력하고 버튼을 누르면 스마트폰으로 강제 알림이 전송됩니다.")
+st.subheader("🚨 분봉 VWAP 지지선 텔레그램 테스트")
+st.info("실제 '보스 전용 스나이퍼 봇 v8.17'에 이식하기 전, 웹에서 로직을 테스트하는 완전체 코드입니다.")
 
-# 봇 토큰과 챗 아이디 입력받기 (비밀번호 처리)
-bot_token = st.text_input("텔레그램 봇 토큰 (Bot Token)", type="password", placeholder="예: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
-chat_id = st.text_input("챗 아이디 (Chat ID)", type="password", placeholder="예: 12345678")
+# 입력 폼 구성 (두 줄로 깔끔하게 배치)
+col1, col2 = st.columns(2)
+with col1:
+    bot_token = st.text_input("텔레그램 봇 토큰", type="password")
+    stock_name = st.text_input("테스트 종목명", value="피에스케이")
+    current_p = st.number_input("실시간 현재가", value=25000, step=100)
+with col2:
+    chat_id = st.text_input("챗 아이디", type="password")
+    stock_code = st.text_input("종목코드", value="031980")
+    vwap_b = st.number_input("VWAP 하단선 (검정선)", value=25500, step=100)
 
-# 버튼 생성
-if st.button("🚀 텔레그램 억지로 쏴보기 (강제 검출)", use_container_width=True):
+st.markdown("---")
+
+# 실행 버튼
+if st.button("🚀 VWAP 지지선 도달 시뮬레이션 쏘기", use_container_width=True):
     if bot_token and chat_id:
-        with st.spinner("텔레그램으로 강제 전송 중입니다..."):
-            # 텔레그램으로 보낼 테스트 메시지 내용
-            test_message = f"""
-🚨 **[VWAP 극강의 눌림목 포착] (강제 테스트)** 🚨
-
-🎯 **종목:** [피에스케이] (031980)
-⏱ **검출 시각:** {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-💸 **수급 조건:** 50억 이상 뭉텅이 수급 유입 완료
-📉 **타점:** VWAP 검정색 하단선 정확히 터치!
-
-➡️ 지금 당장 8282 호가창을 확인하세요!
-"""
-            # 메시지 전송 실행
-            success = send_telegram_message(bot_token, chat_id, test_message)
-            time.sleep(1) # 부드러운 화면 처리를 위한 1초 대기
+        with st.spinner("VWAP 로직 판별 및 전송 중..."):
+            time.sleep(0.5) # 부드러운 UI 처리
             
-            if success:
-                st.success("✨ 전송 완벽하게 성공! 지금 텔레그램 앱이 울렸는지 확인해보세요!")
-                st.balloons() # 축하 애니메이션
+            # 현재가가 VWAP 하단선보다 같거나 작으면 전송
+            if current_p <= vwap_b:
+                success = check_vwap_and_alert(bot_token, chat_id, stock_code, stock_name, current_p, vwap_b)
+                if success:
+                    st.success(f"✨ [조건 만족] 현재가({current_p:,}원)가 VWAP하단({vwap_b:,}원)에 닿았습니다. 텔레그램 전송 완료!")
+                    st.balloons()
+                else:
+                    st.error("전송 실패! 텔레그램 토큰이나 챗 아이디가 정확한지 확인하세요.")
             else:
-                st.error("전송 실패! 봇 토큰이나 챗 아이디가 정확한지 다시 한번 확인해주세요.")
+                # 현재가가 아직 지지선 위에 있으면 쏘지 않음
+                st.warning(f"⚠️ [조건 미달] 현재가({current_p:,}원)가 아직 VWAP하단({vwap_b:,}원) 위에 있습니다. 텔레그램을 쏘지 않습니다.")
     else:
-        st.warning("봇 토큰과 챗 아이디를 모두 입력하셔야 쏠 수 있습니다!")
+        st.error("봇 토큰과 챗 아이디를 모두 입력하셔야 테스트가 가능합니다.")
