@@ -155,24 +155,18 @@ if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_
 st.markdown("---")
 
 # ==========================================
-# 5. 실시간 다음 스캔 카운트다운 타이머
+# 5. 다음 스캔 시간 안내 (무한루프 제거 - 서버 에러 완벽 해결)
 # ==========================================
-timer_placeholder = st.empty()
+now = get_kst_now() 
+weekday = now.weekday()
+current_time_str = now.strftime("%H%M")
 
-while True:
-    now = get_kst_now() 
-    weekday = now.weekday()
-    current_time_str = now.strftime("%H%M")
-    
-    if weekday >= 5 or not ("0830" <= current_time_str <= "1520"):
-        timer_placeholder.warning("🌙 장 마감 시간입니다. 자동 스캔 및 텔레그램 알림이 무음 처리됩니다. (수동 스캔은 언제든 가능)")
-        break
-        
+if weekday >= 5 or not ("0830" <= current_time_str <= "1520"):
+    st.warning("🌙 장 마감 시간입니다. 자동 스캔 및 텔레그램 알림이 무음 처리됩니다. (수동 스캔은 언제든 가능)")
+else:
+    # 다음 10분 단위 시간 계산 (서버 부하 없음!)
     next_time = now + datetime.timedelta(minutes=10 - (now.minute % 10))
     next_time = next_time.replace(second=0, microsecond=0)
+    next_time_str = next_time.strftime("%H시 %M분")
     
-    remaining = next_time - now
-    mins, secs = divmod(remaining.seconds, 60)
-    
-    timer_placeholder.info(f"⏳ **다음 자동 스캔(생존 신고)까지 남은 시간:** {mins:02d}분 {secs:02d}초")
-    time.sleep(1)
+    st.info(f"⏳ **다음 자동 스캔(생존 신고) 예정 시간:** {next_time_str}")
