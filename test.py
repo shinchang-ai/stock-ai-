@@ -9,15 +9,18 @@ import time
 st.set_page_config(page_title="세력 포착 AI 시스템 (Pro)", page_icon="🚀", layout="centered")
 
 BOT_TOKEN = "8899908573:AAEOba8jFLi9h6S1Xhi5E-EqfTNoBf2r-xU"
-# 🔥 드디어 찾아낸 '실시간세력 포착방'의 진짜 채널 아이디가 적용되었습니다!
 CHAT_ID = "-1004426603017"
+
+# 🇰🇷 한국 시간(KST) 가져오는 함수 추가! (외국 서버에서도 무조건 한국 시간으로 고정)
+def get_kst_now():
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID, 
         "text": message,
-        "disable_web_page_preview": True # 네이버 링크 미리보기(썸네일) 방지
+        "disable_web_page_preview": True
     }
     try:
         requests.post(url, data=payload)
@@ -29,7 +32,7 @@ def send_telegram(message):
 # ==========================================
 @st.cache_data(ttl=600)
 def auto_system_check():
-    now = datetime.datetime.now()
+    now = get_kst_now() # 한국 시간 적용!
     current_time = now.strftime("%H%M")
     now_str = now.strftime("%H시 %M분")
     weekday = now.weekday()
@@ -55,13 +58,13 @@ def auto_system_check():
 auto_system_check()
 
 # ==========================================
-# 3. 웹 화면 UI (화면 구성, 줄바꿈 완벽 복구)
+# 3. 웹 화면 UI
 # ==========================================
 st.title("🚀 세력 포착 AI 시스템 (Pro)")
 st.info("🎉 VIP 멤버님, 환영합니다! (웹 & 텔레그램 자동 연동 완료)")
 
-current_hm = datetime.datetime.now().strftime("%H%M")
-if "1510" <= current_hm < "1520":
+now_hm = get_kst_now().strftime("%H%M")
+if "1510" <= now_hm < "1520":
     st.toast('🚨 지금은 종가베팅 시간입니다! 종목을 확인하세요!', icon='🔥')
     st.error("🚨 **[알림] 지금은 종가베팅 시간입니다! 포착된 종목을 확인하세요!**")
 
@@ -84,12 +87,13 @@ st.success("""
 """)
 
 # ==========================================
-# 4. 수동 스캔 (실시간세력 포착방으로 완벽한 양식 전송)
+# 4. 수동 스캔 (완벽한 양식 전송)
 # ==========================================
 if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_width=True, type="primary"):
     with st.spinner("텔레그램 '실시간세력 포착방'으로 완벽한 포맷의 신호를 쏘는 중입니다..."):
         
-        now_time_full = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_kst = get_kst_now() # 한국 시간 적용!
+        now_time_full = now_kst.strftime("%Y-%m-%d %H:%M:%S")
         stock_name = "금호건설"
         stock_code = "002990"
         market_cap = "4,601억"
@@ -121,7 +125,7 @@ if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_
         if res.status_code == 200:
             st.success("✨ '실시간세력 포착방'으로 텔레그램 전송 완료! 방을 확인하세요.")
         else:
-            st.error(f"❌ 전송 실패! 봇이 '실시간세력 포착방'에 관리자로 추가되어 있는지 확인해주세요. (에러: {res.status_code})")
+            st.error(f"❌ 전송 실패! (에러: {res.status_code})")
 
 st.markdown("---")
 
@@ -131,7 +135,7 @@ st.markdown("---")
 timer_placeholder = st.empty()
 
 while True:
-    now = datetime.datetime.now()
+    now = get_kst_now() # 한국 시간 적용!
     weekday = now.weekday()
     current_time_str = now.strftime("%H%M")
     
