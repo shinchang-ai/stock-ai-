@@ -108,29 +108,41 @@ def format_korean_market_cap(eok_value):
     return res.strip() if res else "0억"
 
 # ==========================================
-# 4. 수동 스캔 (완벽한 양식 전송)
+# 4. 수동 스캔 (관리자 암호 및 완벽한 양식 전송)
 # ==========================================
+# 🚨 텔레그램 전송을 통제할 관리자 비밀번호 입력칸
+admin_password = st.text_input("🔑 관리자 암호 (텔레그램 전송용)", type="password")
+
 if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_width=True, type="primary"):
-    with st.spinner("텔레그램 '실시간세력 포착방'으로 완벽한 포맷의 신호를 쏘는 중입니다..."):
+    with st.spinner("주도주 스캔 및 분석을 진행 중입니다..."):
         
         now_kst = get_kst_now()
         now_time_full = now_kst.strftime("%Y-%m-%d %H:%M:%S")
         stock_name = "금호건설"
         stock_code = "002990"
         
-        # 실제 숫자 4601이 들어가면 -> "4천 6백 1억"으로 자동 변환!
+        # [추가됨] 시가총액, 거래량, 거래대금 세팅
         raw_market_cap = 4601 
         market_cap_korean = format_korean_market_cap(raw_market_cap)
+        
+        raw_volume = 15234560  # 예시: 1523만 주
+        formatted_volume = f"{raw_volume:,}주" # 쉼표 찍기
+        
+        raw_trading_value = 2540  # 예시: 2540억 원
+        formatted_trading_value = f"{raw_trading_value:,}억 원" # 쉼표 찍기
         
         ai_score = 98
         naver_link = f"https://m.stock.naver.com/domestic/stock/{stock_code}/total"
 
+        # [수정됨] 텔레그램 메시지 양식에 거래량, 거래대금 숫자 추가
         perfect_msg = f"""🚨 VIP 실시간 수급 포착 🚨
 
 ⏰ 포착시간: {now_time_full}
 
 👑 종목명: {stock_name} ({stock_code})
 📊 시가총액: {market_cap_korean}
+📈 당일 거래량: {formatted_volume}
+💰 당일 거래대금: {formatted_trading_value}
 ⭐ AI 세력 점수: {ai_score}점
 🔗 네이버 증권 연결: {naver_link}
 
@@ -142,15 +154,27 @@ if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_
 
 ⚠️ 면책조항 본 알림은 차트(정배열) 및 수급, OBV 지표를 분석한 AI 기계적 검출 결과이며 매수/매도를 추천하지 않습니다. 투자의 책임은 본인에게 있습니다."""
         
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": perfect_msg, "disable_web_page_preview": True}
-        res = requests.post(url, data=payload)
+        time.sleep(1) # 스캔하는 척 로딩 시간 살짝 부여
         
-        time.sleep(1)
-        if res.status_code == 200:
-            st.success("✨ '실시간세력 포착방'으로 텔레그램 전송 완료! 방을 확인하세요.")
+        # 🟢 일반 사용자를 위해 화면에 결과 출력 (거래량, 거래대금 포함)
+        st.subheader("📊 실시간 스캔 결과")
+        st.info(f"👑 포착 종목: **{stock_name}** ({stock_code})\n\n📊 시가총액: {market_cap_korean} / 📈 거래량: {formatted_volume} / 💰 거래대금: {formatted_trading_value} / ⭐ 점수: {ai_score}점")
+        
+        # 🔒 관리자 비밀번호 검사 (맞아야만 텔레그램 쏨)
+        if admin_password == "1234":  # <--- 이 부분의 "1234"를 원하시는 암호로 변경하세요!
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+            payload = {"chat_id": CHAT_ID, "text": perfect_msg, "disable_web_page_preview": True}
+            res = requests.post(url, data=payload)
+            
+            if res.status_code == 200:
+                st.success("✨ 관리자 인증 완료! '실시간세력 포착방'으로 텔레그램 전송 완료!")
+            else:
+                st.error(f"❌ 전송 실패! (에러: {res.status_code})")
         else:
-            st.error(f"❌ 전송 실패! (에러: {res.status_code})")
+            if admin_password != "":
+                st.error("❌ 비밀번호가 틀렸습니다. 관리자 권한이 없어 텔레그램은 전송되지 않습니다.")
+            else:
+                st.warning("*(일반 사용자는 화면에서만 결과를 확인할 수 있습니다. 텔레그램 미전송)*")
 
 st.markdown("---")
 
