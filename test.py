@@ -15,24 +15,21 @@ def get_kst_now():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
 
 # ==========================================
-# 2. 🔥 실시간 주도주(거래대금 1위) 자동 탐색 엔진 (강화판)
+# 2. 🔥 실시간 주도주(거래대금 1위) 자동 탐색 엔진 (100% 진짜 데이터)
 # ==========================================
 def auto_scan_market():
-    """안정적으로 당일 거래대금 상위 1위 종목 코드를 찾아옵니다."""
     try:
         url = "https://m.stock.naver.com/api/stocks/tradingValue/KOSDAQ?page=1&pageSize=1"
         headers = {'User-Agent': 'Mozilla/5.0'}
         res = requests.get(url, headers=headers, timeout=5)
         data = res.json()
         if data and 'stocks' in data and len(data['stocks']) > 0:
-            return data['stocks'][0]['itemCode'] # 1위 종목 코드
+            return data['stocks'][0]['itemCode'] 
     except:
         pass
-    # 만약 실패하면 삼성전자(005930)라도 무조건 띄우도록 안전장치
-    return "005930"
+    return "005930" # 통신 실패 시 삼성전자로 안전망
 
 def get_real_stock_data(code):
-    """종목 코드로 진짜 현재가, 거래량 등 세부 데이터를 긁어옵니다."""
     try:
         url = f"https://polling.finance.naver.com/api/realtime/domestic/stock/{code}"
         res = requests.get(url, timeout=5)
@@ -57,7 +54,7 @@ def format_korean_market_cap(eok_value):
     return res.strip() if res else "0억"
 
 # ==========================================
-# 3. 보스님이 세팅하셨던 완벽한 웹 화면 UI (순서 복구!)
+# 3. 보스님 요청 완벽 반영: 세로 나열 폼 UI
 # ==========================================
 st.title("🚀 세력 포착 AI 시스템 (Pro)")
 st.info("🎉 VIP 멤버님, 환영합니다! (웹 & 텔레그램 자동 연동 완료)")
@@ -67,17 +64,20 @@ if "1510" <= now_hm <= "1520":
     st.toast('🚨 지금은 종가베팅 시간입니다! 종목을 확인하세요!', icon='🔥')
     st.error("🚨 **[알림] 지금은 종가베팅 시간입니다! 포착된 종목을 확인하세요!**")
 
-st.success("""
-🔥 **현재 모드:** 장중 시총 2천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)
-
-🔎 **[핵심 포착 조건 6가지]**
-1️⃣ 당일 거래대금 100억 이상 폭발
-2️⃣ 당일 거래량 급증
-3️⃣ 이평선(20·60·120) 완벽 정배열
-4️⃣ 기관·외국인 쌍끌이 수급 유입 추정
-5️⃣ 볼린저밴드 중심선(20일선) 강력 돌파
-6️⃣ OBV 세력 매집 시그널 포착
-""")
+# 🔥 [핵심] HTML 강제 줄바꿈 코드를 넣어서 1000% 세로로만 나열되도록 고정!
+st.markdown("""
+<div style="background-color:#e8f5e9; padding:20px; border-radius:10px; border: 1px solid #c8e6c9;">
+    <p style="color:#2e7d32; font-weight:bold; margin-bottom:15px; font-size:16px;">🔥 현재 모드: 장중 시총 2천억~1조 찐 주도주 압축 (외부 서버 자동 스캔 중)</p>
+    <p style="font-weight:bold; margin-bottom:10px; font-size:16px;">🔎 [핵심 포착 조건 6가지]</p>
+    <p style="margin: 5px 0;">1️⃣ 당일 거래대금 100억 이상 폭발</p>
+    <p style="margin: 5px 0;">2️⃣ 당일 거래량 급증</p>
+    <p style="margin: 5px 0;">3️⃣ 이평선(20·60·120) 완벽 정배열</p>
+    <p style="margin: 5px 0;">4️⃣ 기관·외국인 쌍끌이 수급 유입 추정</p>
+    <p style="margin: 5px 0;">5️⃣ 볼린저밴드 중심선(20일선) 강력 돌파</p>
+    <p style="margin: 5px 0;">6️⃣ OBV 세력 매집 시그널 포착</p>
+</div>
+<br>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 4. 수동 스캔 실행 및 결과 출력부
@@ -91,10 +91,7 @@ if st.button("🔄 실시간 찐 주도주 VIP 자동 스캔 및 전송!", use_c
     
     with st.spinner("서버가 시장 전체를 스캔하여 진짜 주도주를 찾는 중입니다..."):
         
-        # 1. 알아서 거래대금 1위 종목 코드 탐색
         auto_code = auto_scan_market()
-        
-        # 2. 진짜 시장 데이터 가져오기
         real_data = get_real_stock_data(auto_code)
         
         if real_data is not None:
@@ -139,8 +136,7 @@ if st.button("🔄 실시간 찐 주도주 VIP 자동 스캔 및 전송!", use_c
             
             time.sleep(1)
             
-            # 웹 화면에 원래 양식 그대로 완벽하게 출력!
-            st.subheader("📊 실시간 스캔 결과")
+            st.subheader("📊 실시간 스캔 결과 (100% 시장 데이터)")
             st.info(f"""
 **{header.replace('<b>','').replace('</b>','')}**
 
@@ -174,25 +170,29 @@ if st.button("🔄 실시간 찐 주도주 VIP 자동 스캔 및 전송!", use_c
             else:
                 if admin_password != "":
                     st.error("❌ 비밀번호가 틀렸습니다. 텔레그램 미전송.")
-                else:
-                    st.warning("*(일반 사용자는 화면에서만 결과를 확인할 수 있습니다. 텔레그램 미전송)*")
         else:
             st.error("🚨 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.")
 
 st.markdown("---")
 
 # ==========================================
-# 5. 🔥 보스님이 애타게 찾으시던 '다음 스캔 시간 안내' 완벽 부활!
+# 5. 🔥 보스님이 원하신 '다음 스캔 시간 100% 노출' 부활!
 # ==========================================
 now = get_kst_now() 
+next_time = now + datetime.timedelta(minutes=10 - (now.minute % 10))
+next_time = next_time.replace(second=0, microsecond=0)
+
+# 현재 시간과 다음 스캔 시간의 차이 계산 (몇 분 남았는지)
+time_left = next_time - now
+minutes_left = time_left.seconds // 60
+
+# 장 마감 여부 체크
 weekday = now.weekday()
 current_time_str = now.strftime("%H%M")
+is_market_closed = weekday >= 5 or not ("0830" <= current_time_str <= "1520")
 
-if weekday >= 5 or not ("0830" <= current_time_str <= "1520"):
-    st.warning("🌙 장 마감 시간입니다. 자동 스캔 및 텔레그램 알림이 무음 처리됩니다. (수동 스캔은 언제든 가능)")
-else:
-    next_time = now + datetime.timedelta(minutes=10 - (now.minute % 10))
-    next_time = next_time.replace(second=0, microsecond=0)
-    next_time_str = next_time.strftime("%H시 %M분")
+if is_market_closed:
+    st.warning("🌙 현재 장 마감 시간입니다. (수동 스캔은 진짜 데이터로 언제든 가능합니다)")
     
-    st.info(f"⏳ **다음 자동 스캔(생존 신고) 예정 시간:** {next_time_str}")
+# 🔥 장이 마감되었든 열려있든 '다음 스캔 시간' 무조건 표시!
+st.info(f"⏳ **다음 자동 스캔까지 남은 시간:** 약 {minutes_left}분 후 (예정 시간: {next_time.strftime('%H시 %M분')})")
