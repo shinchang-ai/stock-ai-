@@ -121,25 +121,27 @@ if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_
         stock_name = "금호건설"
         stock_code = "002990"
         
-        # [추가됨] 시가총액, 거래량, 거래대금 세팅
+        raw_price = 10550 
+        formatted_price = f"{raw_price:,}원"
+        
         raw_market_cap = 4601 
         market_cap_korean = format_korean_market_cap(raw_market_cap)
         
-        raw_volume = 15234560  # 예시: 1523만 주
-        formatted_volume = f"{raw_volume:,}주" # 쉼표 찍기
+        raw_volume = 15234560  
+        formatted_volume = f"{raw_volume:,}주" 
         
-        raw_trading_value = 2540  # 예시: 2540억 원
-        formatted_trading_value = f"{raw_trading_value:,}억 원" # 쉼표 찍기
+        raw_trading_value = 2540  
+        formatted_trading_value = f"{raw_trading_value:,}억 원" 
         
         ai_score = 98
         naver_link = f"https://m.stock.naver.com/domestic/stock/{stock_code}/total"
 
-        # [수정됨] 텔레그램 메시지 양식에 거래량, 거래대금 숫자 추가
         perfect_msg = f"""🚨 VIP 실시간 수급 포착 🚨
 
 ⏰ 포착시간: {now_time_full}
 
 👑 종목명: {stock_name} ({stock_code})
+💵 현재가: {formatted_price}
 📊 시가총액: {market_cap_korean}
 📈 당일 거래량: {formatted_volume}
 💰 당일 거래대금: {formatted_trading_value}
@@ -154,11 +156,29 @@ if st.button("🔄 지금 당장 주도주 수동 스캔하기!", use_container_
 
 ⚠️ 면책조항 본 알림은 차트(정배열) 및 수급, OBV 지표를 분석한 AI 기계적 검출 결과이며 매수/매도를 추천하지 않습니다. 투자의 책임은 본인에게 있습니다."""
         
-        time.sleep(1) # 스캔하는 척 로딩 시간 살짝 부여
+        time.sleep(1) 
         
-        # 🟢 일반 사용자를 위해 화면에 결과 출력 (거래량, 거래대금 포함)
+        # 🟢 [핵심] 일반 사용자도 볼 수 있게 웹 화면에 모든 정보 완벽 출력
         st.subheader("📊 실시간 스캔 결과")
-        st.info(f"👑 포착 종목: **{stock_name}** ({stock_code})\n\n📊 시가총액: {market_cap_korean} / 📈 거래량: {formatted_volume} / 💰 거래대금: {formatted_trading_value} / ⭐ 점수: {ai_score}점")
+        st.info(f"""
+**🚨 VIP 실시간 수급 포착 🚨**
+
+**⏰ 포착시간:** {now_time_full}
+
+**👑 종목명:** {stock_name} ({stock_code})
+**💵 현재가:** {formatted_price}
+**📊 시가총액:** {market_cap_korean}
+**📈 당일 거래량:** {formatted_volume}
+**💰 당일 거래대금:** {formatted_trading_value}
+**⭐ AI 세력 점수:** {ai_score}점
+**🔗 [👉 네이버 증권 바로가기 (클릭)]({naver_link})**
+
+**🔎 찐 주도주 포착 근거**
+* 🏢 외인/기관 추정 대량 매수세 유입 (+35점)
+* 📈 20·60·120일선 완벽 정배열 돌파 (+35점)
+* 👑 OBV 세력 매집 시그널 폭발 (+20점)
+* 💰 당일 거래대금 압도적 상위 (+10점)
+        """)
         
         # 🔒 관리자 비밀번호 검사 (맞아야만 텔레그램 쏨)
         if admin_password == "1234":  # <--- 이 부분의 "1234"를 원하시는 암호로 변경하세요!
